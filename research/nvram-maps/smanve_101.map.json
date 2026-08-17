@@ -1,0 +1,114 @@
+{
+  "_fileformat": 0.7,
+  "_notes": [
+    "Spider-Man Vault Edition (V1.01) - Stern SAM platform.",
+    "Published map: https://github.com/tomlogic/pinmame-nvram-maps (maps/stern/sam/smanve_101.map.json).",
+    "CONFIRMED against a genuine real capture from the office cabinet (2026-08-17, provided by Magnus):",
+    "slot 0 (0x2b80) = 'SSR'/150000000 (untouched factory demo score),",
+    "slot 1 (0x2ba0) = 'RAT'/130296090 (matches Magnus's reported 130,296,088 to within 2 - likely a display",
+    "misread of the last two digits, not a format error),",
+    "slot 3 (0x2be0) = 'LFS'/120000000, slot 4 (0x2c00) = 'RAT'/107481350 - all real player data, not synthetic.",
+    "This is the strongest evidence yet that the Stern SAM high-score layout (11-byte null-terminated ASCII",
+    "initials + 4-byte little-endian int score, 0x20 stride, no checksum) is correct for genuine hardware,",
+    "not just internally-consistent sample data. See xmn_151h.map.json for the still-unverified X-Men case.",
+    "CONFIDENCE: high (independently published AND matches real captured data byte-for-byte on 4 of 5 fields",
+    "checked, with the 5th off by a plausible transcription typo).",
+    "",
+    "CRITICAL CORRECTION (2026-08-17): the 2 bytes immediately after each score/counter field are NOT fixed",
+    "0xFF padding as originally documented here and by tomlogic - they're a 2-byte tag/checksum that is a",
+    "function of that record's (initials, score) content and travels WITH the record when the leaderboard",
+    "re-sorts it to a different rank/address (confirmed: the real 'LFS'/120000000 entry has the exact same",
+    "tag bytes whether it's stored at the Third Place address or, in the factory-default file, the First",
+    "Place address). Only the 2 bytes after THAT (before the next slot) are genuinely fixed 0xFF.",
+    "This tag is almost certainly the actual write-protection mechanism: writing a new score/initials without",
+    "recomputing the matching tag causes the whole record (not the whole block) to be rejected on boot and",
+    "replaced with the ROM's compiled-in factory default for that slot - confirmed via a live isolated test",
+    "(only 'Spider Champion' edited, tag left stale -> only that record reverted, others untouched).",
+    "Exact algorithm NOT yet cracked - quick attempts (8/16-bit sum inverted per the general checksum8/16",
+    "convention, CRC16-CCITT, CRC16-IBM, over several candidate byte spans) did not reproduce the known",
+    "tag values. Could be a different checksum entirely, or not content-derived at all (e.g. a write-sequence",
+    "nonce used to arbitrate between a primary/shadow copy). See project_competition_mode_design memory for",
+    "the full real (initials, score, tag) dataset used to test this.",
+    "",
+    "CRACKED (2026-08-17): disassembled the actual game ROM (smanve_101.bin, provided by Magnus) and found",
+    "the checksum routine directly. tag = 0xFFFF - (sum of the 28 bytes from record start through the end",
+    "of the score field, as plain unsigned bytes, mod 65536), stored as the 2-byte tag at record+0x1c.",
+    "Confirmed by computing it for all 24 known real/factory-default records collected so far: 24/24 matched",
+    "exactly. This is almost certainly why every prior write test failed - we never recomputed this tag, so",
+    "every edited record failed the ROM's own boot-time validation and got replaced with the compiled-in",
+    "default for that slot. research/patch_nvram_score.py now computes and writes this automatically.",
+    "Also corrected 'Best Combo Champion' below: the originally-copied tomlogic map claimed a 1-byte counter",
+    "at +0x1a, which cannot hold LEE's real value (327681) and is contradicted by the checksum match using",
+    "the standard 4-byte-at-+0x18 layout - fixed to match what's actually confirmed correct."
+  ],
+  "_metadata": {
+    "platform": "stern-sam",
+    "roms": ["smanve_100", "smanve_101", "smanve_101c"],
+    "status": "verified against real hardware capture"
+  },
+  "high_scores": [
+    {
+      "label": "Grand Champion",
+      "initials": { "start": "0x02102b80", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":    { "start": "0x02102b98", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "First Place",
+      "initials": { "start": "0x02102ba0", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":    { "start": "0x02102bb8", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "Second Place",
+      "initials": { "start": "0x02102bc0", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":    { "start": "0x02102bd8", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "Third Place",
+      "initials": { "start": "0x02102be0", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":    { "start": "0x02102bf8", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "Fourth Place",
+      "initials": { "start": "0x02102c00", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":    { "start": "0x02102c18", "encoding": "int", "length": 4 }
+    }
+  ],
+  "mode_champions": [
+    {
+      "_note": "Only this entry has been empirically confirmed against real data (2026-08-17): read as 'RAT'/29, matching Magnus's on-machine '29 SPIDERS'. The rest are from the published map, unverified.",
+      "label": "Spider Champion",
+      "initials": { "start": "0x02102c60", "encoding": "ch", "null": "terminate", "length": 11 },
+      "counter": { "start": "0x02102c78", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "Combo Champion",
+      "initials": { "start": "0x02102c20", "encoding": "ch", "null": "terminate", "length": 11 },
+      "counter": { "start": "0x02102c38", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "Best Combo Champion",
+      "initials": { "start": "0x02102c40", "encoding": "ch", "null": "terminate", "length": 11 },
+      "counter": { "start": "0x02102c58", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "Spider Sense Champion",
+      "initials": { "start": "0x02102c80", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":   { "start": "0x02102c98", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "Battle Royale Champion",
+      "initials": { "start": "0x02102ca0", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":   { "start": "0x02102cb8", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "Super Hero Champion",
+      "initials": { "start": "0x02102cc0", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":   { "start": "0x02102cd8", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "Best Bonus Champion",
+      "initials": { "start": "0x02102ce0", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":   { "start": "0x02102cf8", "encoding": "int", "length": 4 }
+    }
+  ]
+}

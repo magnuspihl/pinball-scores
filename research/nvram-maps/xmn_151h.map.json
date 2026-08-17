@@ -1,0 +1,60 @@
+{
+  "_fileformat": 0.7,
+  "_notes": [
+    "X-Men Limited Edition (V1.51 Home) - Stern SAM platform.",
+    "NOT independently published anywhere we could find (not in tomlogic/pinmame-nvram-maps as of 2026-08-17).",
+    "Derived by pattern-matching ScoresData/nvram/xmn_151h.nv against the documented layout for other",
+    "same-era Stern SAM2 titles (avs_170, smanve_101, twd_156) from https://github.com/tomlogic/pinmame-nvram-maps.",
+    "Those titles use: 11-byte null-terminated ASCII initials + 4-byte little-endian int score per slot,",
+    "0x20-byte stride between slots, unused bytes filled with 0xFF, NO checksum over the high-score region.",
+    "xmn_151h.nv matches that same shape at file offset 0x3000 (CPU address 0x02103000).",
+    "CONFIDENCE: medium. Internally consistent and matches the platform convention, but the sample .nv file",
+    "in ScoresData appears to be synthetic demo data (its Grand Champion score/tail bytes are byte-for-byte",
+    "identical to avs_170.nv's, which real independent play would not produce) - so this has NOT been",
+    "confirmed against a genuine captured dump of this exact ROM. Needs real-machine verification.",
+    "File offset = CPU address - 0x02100000 (NVRAM is mapped at 0x02100000 per platforms/stern-sam.json).",
+    "A 6th slot at file offset 0x30A0 ('YAN', counter=15) looks like a mode-champion counter (small int,",
+    "not a full score) analogous to smanve_101's mode_champions entries - not verified, not used for testing.",
+    "",
+    "CHECKSUM (2026-08-17): disassembled smanve_101.bin (Spider-Man Vault Edition ROM, different game,",
+    "same Stern SAM platform) and found the real checksum: tag (2 bytes @ record+0x1c) = 0xFFFF - (sum of",
+    "the 28 bytes from record start through the score field, mod 65536). Confirmed 24/24 against real",
+    "smanve_101 data. This algorithm is presumed (NOT independently confirmed) to apply identically here -",
+    "it's a generic runtime-library checksum, not game-specific logic, and the xmn_151h.nv sample's own G S,",
+    "L R, etc. entries and their tag bytes are consistent with this formula (spot-checked, matches), but we",
+    "don't have a real captured X-Men NVRAM with genuine player data to fully cross-verify the way we did",
+    "for Spider-Man. research/patch_nvram_score.py now computes this automatically for both tables."
+  ],
+  "_metadata": {
+    "platform": "stern-sam",
+    "roms": ["xmn_151h"],
+    "status": "derived, unverified against real hardware"
+  },
+  "high_scores": [
+    {
+      "label": "Grand Champion",
+      "initials": { "start": "0x02103000", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":    { "start": "0x02103018", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "First Place",
+      "initials": { "start": "0x02103020", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":    { "start": "0x02103038", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "Second Place",
+      "initials": { "start": "0x02103040", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":    { "start": "0x02103058", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "Third Place",
+      "initials": { "start": "0x02103060", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":    { "start": "0x02103078", "encoding": "int", "length": 4 }
+    },
+    {
+      "label": "Fourth Place",
+      "initials": { "start": "0x02103080", "encoding": "ch", "null": "terminate", "length": 11 },
+      "score":    { "start": "0x02103098", "encoding": "int", "length": 4 }
+    }
+  ]
+}
