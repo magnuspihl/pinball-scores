@@ -14,7 +14,7 @@ NVRAM files each have a custom binary format with specific memory locations for 
 Visual Pinball X native tables save data in a shared file, User/VPReg.stg (included in ScoresData/User/VPReg.stg).  
 This .stg file uses an old Microsoft format, Compound Storage Files, commonly used by Outlook. They can be parsed with C++ ole32.dll funnctions, imported in the MSStorage folder.  
   
-Pinball FX3 saves data in an unknown proprietary format. It is *probably* stored in the included ScoresData/FX3/Profile.dat file, but it seems to be encrypted. Further research is needed.
+Pinball FX3 saves data in an unknown proprietary format. It is *probably* stored in the included ScoresData/FX3/Profile.dat file, but it seems to be encrypted. Further research is needed — see ScoresData/FX3/ENCRYPTION_NOTES.md for what's been ruled out so far and what would be needed to crack it (short version: it's real encryption, likely AES, and needs the actual game binary to make progress).
 
 # Tests
 A unit test project is included, but barely implemented. Feel free :p
