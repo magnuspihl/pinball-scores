@@ -1,7 +1,7 @@
 {
   "_fileformat": 0.8,
   "_notes": [
-    "Spider-Man Vault Edition (1.01) -- Stern SAM.",
+    "Pirates of the Caribbean (Stern, 6.00) -- Stern SAM.",
     "Stern SAM platform. ARM AT91 CPU, 128KB NVRAM mapped at 0x02100000;",
     "file offset = CPU address - 0x02100000.",
     "Each score record is a 32-byte (0x20) struct:",
@@ -20,39 +20,38 @@
     "the scan against a fresh dump and add any slots that have since appeared."
   ],
   "_pinballscores": {
-    "cabinet_rom": "smanve_101",
-    "title": "Spider-Man Vault Edition (1.01)",
-    "status": "verified against real hardware capture; checksum16 added",
+    "cabinet_rom": "potc_600as",
+    "title": "Pirates of the Caribbean (Stern, 6.00)",
+    "status": "derived from checksum scan; champion labels UNCONFIRMED",
     "upstream": {
       "repo": "https://github.com/tomlogic/pinball-memory-maps",
       "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
-      "path": "maps/stern/sam/smanve_101.map.json"
+      "path": null,
+      "note": "no upstream map exists for this ROM"
     },
     "modified_from_upstream": true,
-    "record_base": "0x02102B80",
-    "record_count": 12
+    "record_base": "0x02102948",
+    "record_count": 10
   },
   "_metadata": {
     "version": 1,
     "license": "GNU Lesser General Public License v3.0",
     "platform": "stern-sam",
     "roms": [
-      "smanve_100",
-      "smanve_101",
-      "smanve_101c"
+      "potc_600as"
     ]
   },
   "high_scores": [
     {
       "label": "Grand Champion",
       "initials": {
-        "start": "0x02102B80",
+        "start": "0x02102948",
         "encoding": "ch",
         "null": "terminate",
         "length": 11
       },
       "score": {
-        "start": "0x02102B98",
+        "start": "0x02102960",
         "encoding": "int",
         "length": 4
       }
@@ -60,13 +59,13 @@
     {
       "label": "First Place",
       "initials": {
-        "start": "0x02102BA0",
+        "start": "0x02102968",
         "encoding": "ch",
         "null": "terminate",
         "length": 11
       },
       "score": {
-        "start": "0x02102BB8",
+        "start": "0x02102980",
         "encoding": "int",
         "length": 4
       }
@@ -74,13 +73,13 @@
     {
       "label": "Second Place",
       "initials": {
-        "start": "0x02102BC0",
+        "start": "0x02102988",
         "encoding": "ch",
         "null": "terminate",
         "length": 11
       },
       "score": {
-        "start": "0x02102BD8",
+        "start": "0x021029A0",
         "encoding": "int",
         "length": 4
       }
@@ -88,13 +87,13 @@
     {
       "label": "Third Place",
       "initials": {
-        "start": "0x02102BE0",
+        "start": "0x021029A8",
         "encoding": "ch",
         "null": "terminate",
         "length": 11
       },
       "score": {
-        "start": "0x02102BF8",
+        "start": "0x021029C0",
         "encoding": "int",
         "length": 4
       }
@@ -102,13 +101,13 @@
     {
       "label": "Fourth Place",
       "initials": {
-        "start": "0x02102C00",
+        "start": "0x021029C8",
         "encoding": "ch",
         "null": "terminate",
         "length": 11
       },
       "score": {
-        "start": "0x02102C18",
+        "start": "0x021029E0",
         "encoding": "int",
         "length": 4
       }
@@ -116,99 +115,71 @@
   ],
   "mode_champions": [
     {
-      "label": "Combo Champion",
+      "label": "Champion 1 (unnamed)",
       "initials": {
-        "start": "0x02102C20",
+        "start": "0x021029E8",
         "encoding": "ch",
         "null": "terminate",
         "length": 11
       },
       "counter": {
-        "start": "0x02102C38",
+        "start": "0x02102A00",
         "encoding": "int",
         "length": 4
       }
     },
     {
-      "label": "Best Combo Champion",
+      "label": "Champion 2 (unnamed)",
       "initials": {
-        "start": "0x02102C40",
+        "start": "0x02102A08",
         "encoding": "ch",
         "null": "terminate",
         "length": 11
       },
       "counter": {
-        "start": "0x02102C58",
+        "start": "0x02102A20",
         "encoding": "int",
         "length": 4
       }
     },
     {
-      "label": "Spider Champion",
+      "label": "Champion 3 (unnamed)",
       "initials": {
-        "start": "0x02102C60",
+        "start": "0x02102A28",
         "encoding": "ch",
         "null": "terminate",
         "length": 11
       },
       "counter": {
-        "start": "0x02102C78",
+        "start": "0x02102A40",
         "encoding": "int",
         "length": 4
       }
     },
     {
-      "label": "Spider Sense Champion",
+      "label": "Champion 4 (unnamed)",
       "initials": {
-        "start": "0x02102C80",
+        "start": "0x02102A48",
         "encoding": "ch",
         "null": "terminate",
         "length": 11
       },
-      "score": {
-        "start": "0x02102C98",
+      "counter": {
+        "start": "0x02102A60",
         "encoding": "int",
         "length": 4
       }
     },
     {
-      "label": "Battle Royale Champion",
+      "label": "Champion 5 (unnamed)",
       "initials": {
-        "start": "0x02102CA0",
+        "start": "0x02102A68",
         "encoding": "ch",
         "null": "terminate",
         "length": 11
       },
-      "score": {
-        "start": "0x02102CB8",
-        "encoding": "int",
-        "length": 4
-      }
-    },
-    {
-      "label": "Super Hero Champion",
-      "initials": {
-        "start": "0x02102CC0",
-        "encoding": "ch",
-        "null": "terminate",
-        "length": 11
-      },
-      "score": {
-        "start": "0x02102CD8",
-        "encoding": "int",
-        "length": 4
-      }
-    },
-    {
-      "label": "Best Bonus Champion",
-      "initials": {
-        "start": "0x02102CE0",
-        "encoding": "ch",
-        "null": "terminate",
-        "length": 11
-      },
-      "score": {
-        "start": "0x02102CF8",
+      "counter": {
+        "start": "0x02102A80",
         "encoding": "int",
         "length": 4
       }
@@ -216,64 +187,54 @@
   ],
   "checksum16": [
     {
-      "start": "0x02102B80",
+      "start": "0x02102948",
       "length": 30,
       "label": "Grand Champion"
     },
     {
-      "start": "0x02102BA0",
+      "start": "0x02102968",
       "length": 30,
       "label": "First Place"
     },
     {
-      "start": "0x02102BC0",
+      "start": "0x02102988",
       "length": 30,
       "label": "Second Place"
     },
     {
-      "start": "0x02102BE0",
+      "start": "0x021029A8",
       "length": 30,
       "label": "Third Place"
     },
     {
-      "start": "0x02102C00",
+      "start": "0x021029C8",
       "length": 30,
       "label": "Fourth Place"
     },
     {
-      "start": "0x02102C20",
+      "start": "0x021029E8",
       "length": 30,
-      "label": "Combo Champion"
+      "label": "Champion 1 (unnamed)"
     },
     {
-      "start": "0x02102C40",
+      "start": "0x02102A08",
       "length": 30,
-      "label": "Best Combo Champion"
+      "label": "Champion 2 (unnamed)"
     },
     {
-      "start": "0x02102C60",
+      "start": "0x02102A28",
       "length": 30,
-      "label": "Spider Champion"
+      "label": "Champion 3 (unnamed)"
     },
     {
-      "start": "0x02102C80",
+      "start": "0x02102A48",
       "length": 30,
-      "label": "Spider Sense Champion"
+      "label": "Champion 4 (unnamed)"
     },
     {
-      "start": "0x02102CA0",
+      "start": "0x02102A68",
       "length": 30,
-      "label": "Battle Royale Champion"
-    },
-    {
-      "start": "0x02102CC0",
-      "length": 30,
-      "label": "Super Hero Champion"
-    },
-    {
-      "start": "0x02102CE0",
-      "length": 30,
-      "label": "Best Bonus Champion"
+      "label": "Champion 5 (unnamed)"
     }
   ]
 }
