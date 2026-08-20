@@ -1,0 +1,554 @@
+{
+  "_fileformat": 0.8,
+  "_notes": [
+    "The Walking Dead (1.56 Home) -- Stern SAM.",
+    "Stern SAM platform. ARM AT91 CPU, 128KB NVRAM mapped at 0x02100000;",
+    "file offset = CPU address - 0x02100000.",
+    "Each score record is a 32-byte (0x20) struct:",
+    "  +0x00 char initials[] (ASCII, NUL-terminated, 0xFF-padded, 11 bytes mapped)",
+    "  +0x18 uint32 score/counter, little-endian",
+    "  +0x1c uint16 checksum, little-endian = 0xFFFF - sum(bytes +0x00..+0x1b)",
+    "  +0x1e 0xFFFF filler",
+    "The checksum is the ROM's own boot-time record validation: a record written",
+    "without recomputing it is discarded and replaced by the ROM's compiled-in",
+    "factory default for that slot. It was recovered by disassembling the",
+    "smanve_101 game ROM (research/rom-analysis/NOTES.md) and is expressed here",
+    "with the same `checksum16` convention the upstream Star Trek SAM maps use.",
+    "Record addresses were confirmed by scanning the sample NVRAM for offsets",
+    "where the checksum holds (research/tools/sam_record_scan.py). Champion",
+    "slots that have never been earned are 0xFF-filled and do not appear -- re-run",
+    "the scan against a fresh dump and add any slots that have since appeared."
+  ],
+  "_pinballscores": {
+    "cabinet_rom": "twd_156h",
+    "title": "The Walking Dead (1.56 Home)",
+    "status": "derived from checksum scan; labels follow upstream twd_156",
+    "upstream": {
+      "repo": "https://github.com/tomlogic/pinball-memory-maps",
+      "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
+      "path": null,
+      "note": "no upstream map exists for this ROM"
+    },
+    "modified_from_upstream": true,
+    "record_base": "0x021036D8",
+    "record_count": 19,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "Grand Champion",
+          "First Place",
+          "Second Place",
+          "Third Place",
+          "Fourth Place"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "walkers_killed_champion",
+        "name": "Walkers Killed Champion",
+        "order": "ranked",
+        "slots": [
+          "Walkers Killed Champion"
+        ],
+        "value_type": "counter"
+      },
+      {
+        "key": "combo_champion",
+        "name": "Combo Champion",
+        "order": "ranked",
+        "slots": [
+          "Combo Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "bicycle_girl_champion",
+        "name": "Bicycle Girl Champion",
+        "order": "ranked",
+        "slots": [
+          "Bicycle Girl Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "barn_champion",
+        "name": "Barn Champion",
+        "order": "ranked",
+        "slots": [
+          "Barn Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "cdc_champion",
+        "name": "CDC Champion",
+        "order": "ranked",
+        "slots": [
+          "CDC Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "riot_champion",
+        "name": "Riot Champion",
+        "order": "ranked",
+        "slots": [
+          "Riot Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "tunnel_champion",
+        "name": "Tunnel Champion",
+        "order": "ranked",
+        "slots": [
+          "Tunnel Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "arena_champion",
+        "name": "Arena Champion",
+        "order": "ranked",
+        "slots": [
+          "Arena Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "terminus_champion",
+        "name": "Terminus Champion",
+        "order": "ranked",
+        "slots": [
+          "Terminus Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "blood_bath_champion",
+        "name": "Blood Bath Champion",
+        "order": "ranked",
+        "slots": [
+          "Blood Bath Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "crossbow_champion",
+        "name": "Crossbow Champion",
+        "order": "ranked",
+        "slots": [
+          "Crossbow Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "x_champion",
+        "name": "X Champion",
+        "order": "ranked",
+        "slots": [
+          "X Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "horde_champion",
+        "name": "Horde Champion",
+        "order": "ranked",
+        "slots": [
+          "Horde Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "last_man_standing_champion",
+        "name": "Last Man Standing Champion",
+        "order": "ranked",
+        "slots": [
+          "Last Man Standing Champion"
+        ],
+        "value_type": "score"
+      }
+    ],
+    "initials_padding": "null",
+    "map_version": "b012c6925df0"
+  },
+  "_metadata": {
+    "version": 1,
+    "license": "GNU Lesser General Public License v3.0",
+    "platform": "stern-sam",
+    "roms": [
+      "twd_156h"
+    ]
+  },
+  "high_scores": [
+    {
+      "label": "Grand Champion",
+      "initials": {
+        "start": "0x021036D8",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x021036F0",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "First Place",
+      "initials": {
+        "start": "0x021036F8",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103710",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Second Place",
+      "initials": {
+        "start": "0x02103718",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103730",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Third Place",
+      "initials": {
+        "start": "0x02103738",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103750",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Fourth Place",
+      "initials": {
+        "start": "0x02103758",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103770",
+        "encoding": "int",
+        "length": 4
+      }
+    }
+  ],
+  "mode_champions": [
+    {
+      "label": "Walkers Killed Champion",
+      "initials": {
+        "start": "0x02103778",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "counter": {
+        "start": "0x02103790",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Combo Champion",
+      "initials": {
+        "start": "0x02103798",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x021037B0",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Bicycle Girl Champion",
+      "initials": {
+        "start": "0x021037B8",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x021037D0",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Barn Champion",
+      "initials": {
+        "start": "0x021037D8",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x021037F0",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "CDC Champion",
+      "initials": {
+        "start": "0x021037F8",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103810",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Riot Champion",
+      "initials": {
+        "start": "0x02103818",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103830",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Tunnel Champion",
+      "initials": {
+        "start": "0x02103838",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103850",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Arena Champion",
+      "initials": {
+        "start": "0x02103858",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103870",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Terminus Champion",
+      "initials": {
+        "start": "0x02103878",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103890",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Blood Bath Champion",
+      "initials": {
+        "start": "0x02103898",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x021038B0",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Crossbow Champion",
+      "initials": {
+        "start": "0x021038B8",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x021038D0",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "X Champion",
+      "initials": {
+        "start": "0x021038D8",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x021038F0",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Horde Champion",
+      "initials": {
+        "start": "0x021038F8",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103910",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Last Man Standing Champion",
+      "initials": {
+        "start": "0x02103918",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103930",
+        "encoding": "int",
+        "length": 4
+      }
+    }
+  ],
+  "checksum16": [
+    {
+      "start": "0x021036D8",
+      "length": 30,
+      "label": "Grand Champion"
+    },
+    {
+      "start": "0x021036F8",
+      "length": 30,
+      "label": "First Place"
+    },
+    {
+      "start": "0x02103718",
+      "length": 30,
+      "label": "Second Place"
+    },
+    {
+      "start": "0x02103738",
+      "length": 30,
+      "label": "Third Place"
+    },
+    {
+      "start": "0x02103758",
+      "length": 30,
+      "label": "Fourth Place"
+    },
+    {
+      "start": "0x02103778",
+      "length": 30,
+      "label": "Walkers Killed Champion"
+    },
+    {
+      "start": "0x02103798",
+      "length": 30,
+      "label": "Combo Champion"
+    },
+    {
+      "start": "0x021037B8",
+      "length": 30,
+      "label": "Bicycle Girl Champion"
+    },
+    {
+      "start": "0x021037D8",
+      "length": 30,
+      "label": "Barn Champion"
+    },
+    {
+      "start": "0x021037F8",
+      "length": 30,
+      "label": "CDC Champion"
+    },
+    {
+      "start": "0x02103818",
+      "length": 30,
+      "label": "Riot Champion"
+    },
+    {
+      "start": "0x02103838",
+      "length": 30,
+      "label": "Tunnel Champion"
+    },
+    {
+      "start": "0x02103858",
+      "length": 30,
+      "label": "Arena Champion"
+    },
+    {
+      "start": "0x02103878",
+      "length": 30,
+      "label": "Terminus Champion"
+    },
+    {
+      "start": "0x02103898",
+      "length": 30,
+      "label": "Blood Bath Champion"
+    },
+    {
+      "start": "0x021038B8",
+      "length": 30,
+      "label": "Crossbow Champion"
+    },
+    {
+      "start": "0x021038D8",
+      "length": 30,
+      "label": "X Champion"
+    },
+    {
+      "start": "0x021038F8",
+      "length": 30,
+      "label": "Horde Champion"
+    },
+    {
+      "start": "0x02103918",
+      "length": 30,
+      "label": "Last Man Standing Champion"
+    }
+  ]
+}

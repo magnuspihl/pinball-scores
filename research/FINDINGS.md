@@ -1,5 +1,10 @@
 # Competition Mode & score write-back — findings (2026-08-17)
 
+> **Follow-up:** this document covers the two tables the investigation started
+> with (`smanve_101` and `gotg_2020`). All eighteen tables on the cabinet have
+> since been mapped and verified — see [TABLE-MAPPING.md](TABLE-MAPPING.md),
+> which supersedes the "Tooling inventory" section below.
+
 Written for whoever picks up the CLI reimplementation and/or the new score-ingestion
 API, so the context from this investigation doesn't have to be rediscovered. Everything
 here came out of one long working session; see `research/rom-analysis/NOTES.md` and
@@ -164,10 +169,20 @@ deliberately doesn't attempt.
 
 ## Tooling inventory (`research/`)
 
-- `nvram-maps/smanve_101.map.json` — hardware-verified field offsets + the checksum
-  derivation writeup.
-- `nvram-maps/xmn_151h.map.json` — derived-by-pattern-matching field offsets, checksum
-  presumed-not-confirmed, as above.
+*(Superseded by [TABLE-MAPPING.md](TABLE-MAPPING.md), which covers all eighteen
+tables and adds `tools/`. The map files listed here have been regenerated in
+file format v0.8 with their `checksum16` sections.)*
+
+- `nvram-maps/` — one map per NVRAM table, `stg-maps/` — one per VPX table.
+- `tools/validate_maps.py` — checks every map against real NVRAM, including a
+  simulated write.
+- `tools/sam_record_scan.py` — rediscovers a Stern SAM table's record layout
+  from any dump, using the checksum as a signature.
+- `tools/find_checksums.py` — finds (or rules out) a checksum protecting a byte
+  range, given two dumps of one ROM.
+- `tools/patch_score.py` — map-driven writer for *any* platform (WPC BCD behind
+  a block checksum, SAM ints behind a per-record checksum, Whitestar/Data East
+  with no checksum), superseding the SAM-only `patch_nvram_score.py` below.
 - `patch_nvram_score.py` — patches NVRAM records with correct checksums, self-verifying.
 - `patch_stg_score.py` — patches STG (VPX) records, same-length-only, self-verifying.
 - `rom-analysis/NOTES.md` — the detailed ROM-disassembly trail (memory map, function
@@ -176,6 +191,44 @@ deliberately doesn't attempt.
   SAM title from scratch).
 - `test-output/` — the current (checksum-corrected) test patches awaiting a real-hardware
   test, for both tables.
+
+## Upstream: switching to tomlogic/pinball-memory-maps
+
+The CLI-reimplementation agent proposed switching from the PINemHi .exe
+dependency to `tomlogic/pinball-memory-maps` (the project our own
+`research/nvram-maps/*.json` files are already written in the format of —
+it's a rename of the repo formerly known as `pinmame-nvram-maps`) plus its
+companion reference parser, `tomlogic/py-pinmame-nvmaps`. Independently
+verified this, not just taken on trust:
+
+- Repo rename and reference parser are both real (checked directly).
+- The project's own documented `checksum16` convention — "the last two bytes
+  of the range are the 16-bit result of subtracting all prior bytes in the
+  range from `0xFFFF`" — is exactly the formula we reverse-engineered from
+  the ROM, independently corroborated by a source that never saw our
+  disassembly.
+- Running the reference parser against our real cabinet files, and against
+  our own checksum-corrected write-back patches, produces matching results.
+- **Gap found, worth knowing:** upstream's own `smanve_101.map.json` does
+  *not* actually include `checksum16` entries — confirmed by checking the
+  file directly and by a negative-control test (corrupted a field, the
+  reference parser's checksum verification stayed silent because there was
+  nothing to check against). So don't rely on upstream's map as-is for the
+  write path — it doesn't carry the protection you'd expect. Keep depending
+  on our own maintained map copies for any table we've reverse-engineered.
+
+**Plan going forward (agreed with Magnus):** once the corrected write-back is
+confirmed on real hardware, use the upstream maps as a *starting point* and
+go through the cabinet's tables reverse-engineering our own authoritative
+copies (offsets + checksums), the same way this session did for `smanve_101`
+and `xmn_151h`.
+
+**Drafted, not yet submitted:** a PR contributing the `checksum16` section
+back upstream for `smanve_101` (plus the `Best Combo Champion` field-width
+fix flagged earlier) — see `research/upstream-contribution/`. Contains a
+ready-to-apply patch, the final map file, and a full PR title/description
+with the verification transcript. Needs Magnus's own GitHub account to
+actually fork/push/open — not something done automatically from this task.
 
 ## Not started / explicitly out of scope for now
 

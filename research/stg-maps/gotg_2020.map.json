@@ -1,0 +1,185 @@
+{
+  "_fileformat": "pinballscores-stg-0.1",
+  "_notes": [
+    "Guardians of the Galaxy (VPX)",
+    "Visual Pinball X native table. State lives in User/VPReg.stg, an OLE",
+    "Compound File: one storage per table, one stream per setting, each stream",
+    "holding a UTF-16LE string. Scores are decimal strings, initials are plain",
+    "strings. There is no checksum and no ROM to reject a written value, so",
+    "insertion is a straight stream rewrite -- confirmed on the real cabinet in",
+    "2026-08-17 for gotg_2020 (patched scores displayed, and were then beaten",
+    "and overwritten by real play).",
+    "Rewriting a stream in place only works when the new value is the same",
+    "length; a longer or shorter value needs the CFB directory and FAT updated.",
+    "research/patch_stg_score.py takes the same-length shortcut (zero-pad the",
+    "numeric string). A production writer should use a real CFB writer instead --",
+    "the app already talks to ole32's IStorage via PinballScores/MSStorage, which",
+    "supports resizing streams natively."
+  ],
+  "_pinballscores": {
+    "cabinet_table": "gotg_2020",
+    "title": "Guardians of the Galaxy (VPX)",
+    "status": "generated from ScoresData/User/VPReg.stg and validated",
+    "source_file": "User/VPReg.stg",
+    "initials_padding": "none",
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "High Score #1",
+          "High Score #2",
+          "High Score #3",
+          "High Score #4",
+          "High Score #5"
+        ]
+      },
+      {
+        "key": "cb",
+        "name": "CB",
+        "order": "ranked",
+        "slots": [
+          "CB"
+        ]
+      },
+      {
+        "key": "combo",
+        "name": "Combo",
+        "order": "ranked",
+        "slots": [
+          "Combo"
+        ]
+      },
+      {
+        "key": "immo",
+        "name": "IMMO",
+        "order": "ranked",
+        "slots": [
+          "IMMO"
+        ]
+      },
+      {
+        "key": "xandar",
+        "name": "Xandar",
+        "order": "ranked",
+        "slots": [
+          "Xandar"
+        ]
+      }
+    ],
+    "map_version": "9c608ef69e32"
+  },
+  "_metadata": {
+    "version": 1,
+    "platform": "vpx-stg",
+    "storage": "gotg_2020"
+  },
+  "high_scores": [
+    {
+      "label": "High Score #1",
+      "initials": {
+        "stream": "HighScore1Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore1",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #2",
+      "initials": {
+        "stream": "HighScore2Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore2",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #3",
+      "initials": {
+        "stream": "HighScore3Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore3",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #4",
+      "initials": {
+        "stream": "HighScore4Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore4",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #5",
+      "initials": {
+        "stream": "HighScore5Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore5",
+        "encoding": "decimal_string"
+      }
+    }
+  ],
+  "mode_champions": [
+    {
+      "label": "CB",
+      "_note": "field name taken verbatim from the table script",
+      "initials": {
+        "stream": "HighScoreCBName",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScoreCB",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "Combo",
+      "_note": "field name taken verbatim from the table script",
+      "initials": {
+        "stream": "HighScoreComboName",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScoreCombo",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "IMMO",
+      "_note": "field name taken verbatim from the table script",
+      "initials": {
+        "stream": "HighScoreIMMOName",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScoreIMMO",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "Xandar",
+      "_note": "field name taken verbatim from the table script",
+      "initials": {
+        "stream": "HighScoreXandarName",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScoreXandar",
+        "encoding": "decimal_string"
+      }
+    }
+  ]
+}
