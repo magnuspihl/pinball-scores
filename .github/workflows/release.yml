@@ -1,0 +1,79 @@
+name: Release
+
+# Tag a commit to ship it:
+#   git tag v1.2.3 && git push origin v1.2.3
+#
+# This publishes a Velopack package to a GitHub Release. The cabinet's service
+# polls that release and updates itself, so shipping never involves touching the
+# Windows machine.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, without the leading v'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Velopack builds Windows installers on Windows.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Work out the version
+        id: version
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "value=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Test
+        run: dotnet test -c Release
+
+      - name: Publish self-contained
+        run: >
+          dotnet publish src/PinballScores.Service/PinballScores.Service.csproj
+          -c Release
+          -r win-x64
+          --self-contained
+          -p:Version=${{ steps.version.outputs.value }}
+          -o publish
+
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk
+
+      - name: Build the update package
+        run: >
+          vpk pack
+          --packId PinballScores
+          --packVersion ${{ steps.version.outputs.value }}
+          --packDir publish
+          --mainExe PinballScores.exe
+          --packTitle "Pinball Scores"
+          --outputDir releases
+
+      # Velopack verifies package integrity on download and applies updates
+      # atomically with rollback, so a partial download cannot brick the cabinet.
+      - name: Publish the GitHub Release
+        run: >
+          vpk upload github
+          --repoUrl https://github.com/${{ github.repository }}
+          --token ${{ secrets.GITHUB_TOKEN }}
+          --outputDir releases
+          --tag v${{ steps.version.outputs.value }}
+          --publish
