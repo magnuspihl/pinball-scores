@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+    <!-- Managed Compound File reader for Visual Pinball's VPReg.stg.
+         Replaces the old ole32 P/Invoke, which pinned us to Windows and
+         made the STG extractor impossible to unit test. -->
+    <PackageReference Include="OpenMcdf" Version="3.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- NVRAM maps and platform definitions ship inside the assembly so a
+         deployment is a single self-contained artifact. -->
+    <EmbeddedResource Include="Maps\**\*.json" />
+  </ItemGroup>
+
+</Project>

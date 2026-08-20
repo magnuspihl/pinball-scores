@@ -1,0 +1,207 @@
+{
+  "_fileformat": 0.8,
+  "_notes": [
+    "X-Men LE (1.51 Home) -- Stern SAM.",
+    "Stern SAM platform. ARM AT91 CPU, 128KB NVRAM mapped at 0x02100000;",
+    "file offset = CPU address - 0x02100000.",
+    "Each score record is a 32-byte (0x20) struct:",
+    "  +0x00 char initials[] (ASCII, NUL-terminated, 0xFF-padded, 11 bytes mapped)",
+    "  +0x18 uint32 score/counter, little-endian",
+    "  +0x1c uint16 checksum, little-endian = 0xFFFF - sum(bytes +0x00..+0x1b)",
+    "  +0x1e 0xFFFF filler",
+    "The checksum is the ROM's own boot-time record validation: a record written",
+    "without recomputing it is discarded and replaced by the ROM's compiled-in",
+    "factory default for that slot. It was recovered by disassembling the",
+    "smanve_101 game ROM (research/rom-analysis/NOTES.md) and is expressed here",
+    "with the same `checksum16` convention the upstream Star Trek SAM maps use.",
+    "Record addresses were confirmed by scanning the sample NVRAM for offsets",
+    "where the checksum holds (research/tools/sam_record_scan.py). Champion",
+    "slots that have never been earned are 0xFF-filled and do not appear -- re-run",
+    "the scan against a fresh dump and add any slots that have since appeared.",
+    "",
+    "Champion labels came out of the game ROM itself (a legally-owned copy",
+    "supplied for this purpose only, deliberately kept out of git). Stern SAM",
+    "ROMs carry two parallel tables: the slot labels as displayed, and the",
+    "default initials each slot is seeded with. Both are in NVRAM record order,",
+    "so the seeded initials still sitting in unbeaten slots confirm which label",
+    "belongs to which record -- the ordering is checked, not assumed.",
+    "The ranked slots keep the Grand Champion / First..Fourth Place naming the",
+    "other maps here use rather than the ROM's HIGH SCORE #n, since rank is",
+    "derived from the value rather than stored. Champion labels are the ROM's",
+    "own wording.",
+    "For this ROM the label table reads GRAND CHAMPION, HIGH SCORE #1..#4,",
+    "COMBO CHAMPION -- six labels for the six records found by the scan. The",
+    "parallel default-initials table reads STERN, ROPP, ROTHARMEL, THORNE,",
+    "POWERS, YANCY, and this cabinet's X-Men has never been beaten, so all six",
+    "slots still hold exactly those initials in exactly that order (G S, L R,",
+    "J R, D T, P P, YAN). That is a clean 1:1 confirmation of the ordering."
+  ],
+  "_pinballscores": {
+    "cabinet_rom": "xmn_151h",
+    "title": "X-Men LE (1.51 Home)",
+    "status": "derived from checksum scan; labels read out of the game ROM",
+    "upstream": {
+      "repo": "https://github.com/tomlogic/pinball-memory-maps",
+      "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
+      "path": null,
+      "note": "no upstream map exists for this ROM"
+    },
+    "modified_from_upstream": true,
+    "record_base": "0x02103000",
+    "record_count": 6,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "Grand Champion",
+          "First Place",
+          "Second Place",
+          "Third Place",
+          "Fourth Place"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "combo_champion",
+        "name": "Combo Champion",
+        "order": "ranked",
+        "slots": [
+          "Combo Champion"
+        ],
+        "value_type": "counter"
+      }
+    ],
+    "initials_padding": "null",
+    "map_version": "f26032a0585a"
+  },
+  "_metadata": {
+    "version": 1,
+    "license": "GNU Lesser General Public License v3.0",
+    "platform": "stern-sam",
+    "roms": [
+      "xmn_151h"
+    ]
+  },
+  "high_scores": [
+    {
+      "label": "Grand Champion",
+      "initials": {
+        "start": "0x02103000",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103018",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "First Place",
+      "initials": {
+        "start": "0x02103020",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103038",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Second Place",
+      "initials": {
+        "start": "0x02103040",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103058",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Third Place",
+      "initials": {
+        "start": "0x02103060",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103078",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Fourth Place",
+      "initials": {
+        "start": "0x02103080",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02103098",
+        "encoding": "int",
+        "length": 4
+      }
+    }
+  ],
+  "mode_champions": [
+    {
+      "label": "Combo Champion",
+      "initials": {
+        "start": "0x021030A0",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "counter": {
+        "start": "0x021030B8",
+        "encoding": "int",
+        "length": 4
+      }
+    }
+  ],
+  "checksum16": [
+    {
+      "start": "0x02103000",
+      "length": 30,
+      "label": "Grand Champion"
+    },
+    {
+      "start": "0x02103020",
+      "length": 30,
+      "label": "First Place"
+    },
+    {
+      "start": "0x02103040",
+      "length": 30,
+      "label": "Second Place"
+    },
+    {
+      "start": "0x02103060",
+      "length": 30,
+      "label": "Third Place"
+    },
+    {
+      "start": "0x02103080",
+      "length": 30,
+      "label": "Fourth Place"
+    },
+    {
+      "start": "0x021030A0",
+      "length": 30,
+      "label": "Combo Champion"
+    }
+  ]
+}
