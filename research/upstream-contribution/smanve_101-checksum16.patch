@@ -1,0 +1,93 @@
+diff --git a/maps/stern/sam/smanve_101.map.json b/maps/stern/sam/smanve_101.map.json
+index 7f89985..7ca6a1a 100644
+--- a/maps/stern/sam/smanve_101.map.json
++++ b/maps/stern/sam/smanve_101.map.json
+@@ -1,7 +1,7 @@
+ {
+   "_fileformat": 0.7,
+   "_metadata": {
+-    "version": 3,
++    "version": 4,
+     "license": "GNU Lesser General Public License v3.0",
+     "platform": "stern-sam",
+     "roms": [
+@@ -106,9 +106,9 @@
+         "length": 11
+       },
+       "counter": {
+-        "start": "0x02102c5a",
++        "start": "0x02102c58",
+         "encoding": "int",
+-        "length": 1
++        "length": 4
+       }
+     },
+     {
+@@ -181,5 +181,67 @@
+         "length": 4
+       }
+     }
++  ],
++  "checksum16": [
++    {
++      "start": "0x02102b80",
++      "length": 30,
++      "label": "Grand Champion"
++    },
++    {
++      "start": "0x02102ba0",
++      "length": 30,
++      "label": "First Place"
++    },
++    {
++      "start": "0x02102bc0",
++      "length": 30,
++      "label": "Second Place"
++    },
++    {
++      "start": "0x02102be0",
++      "length": 30,
++      "label": "Third Place"
++    },
++    {
++      "start": "0x02102c00",
++      "length": 30,
++      "label": "Fourth Place"
++    },
++    {
++      "start": "0x02102c20",
++      "length": 30,
++      "label": "Combo Champion"
++    },
++    {
++      "start": "0x02102c40",
++      "length": 30,
++      "label": "Best Combo Champion"
++    },
++    {
++      "start": "0x02102c60",
++      "length": 30,
++      "label": "Spider Champion"
++    },
++    {
++      "start": "0x02102c80",
++      "length": 30,
++      "label": "Spider Sense Champion"
++    },
++    {
++      "start": "0x02102ca0",
++      "length": 30,
++      "label": "Battle Royale Champion"
++    },
++    {
++      "start": "0x02102cc0",
++      "length": 30,
++      "label": "Super Hero Champion"
++    },
++    {
++      "start": "0x02102ce0",
++      "length": 30,
++      "label": "Best Bonus Champion"
++    }
+   ]
+ }
