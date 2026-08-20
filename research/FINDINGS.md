@@ -177,6 +177,44 @@ deliberately doesn't attempt.
 - `test-output/` — the current (checksum-corrected) test patches awaiting a real-hardware
   test, for both tables.
 
+## Upstream: switching to tomlogic/pinball-memory-maps
+
+The CLI-reimplementation agent proposed switching from the PINemHi .exe
+dependency to `tomlogic/pinball-memory-maps` (the project our own
+`research/nvram-maps/*.json` files are already written in the format of —
+it's a rename of the repo formerly known as `pinmame-nvram-maps`) plus its
+companion reference parser, `tomlogic/py-pinmame-nvmaps`. Independently
+verified this, not just taken on trust:
+
+- Repo rename and reference parser are both real (checked directly).
+- The project's own documented `checksum16` convention — "the last two bytes
+  of the range are the 16-bit result of subtracting all prior bytes in the
+  range from `0xFFFF`" — is exactly the formula we reverse-engineered from
+  the ROM, independently corroborated by a source that never saw our
+  disassembly.
+- Running the reference parser against our real cabinet files, and against
+  our own checksum-corrected write-back patches, produces matching results.
+- **Gap found, worth knowing:** upstream's own `smanve_101.map.json` does
+  *not* actually include `checksum16` entries — confirmed by checking the
+  file directly and by a negative-control test (corrupted a field, the
+  reference parser's checksum verification stayed silent because there was
+  nothing to check against). So don't rely on upstream's map as-is for the
+  write path — it doesn't carry the protection you'd expect. Keep depending
+  on our own maintained map copies for any table we've reverse-engineered.
+
+**Plan going forward (agreed with Magnus):** once the corrected write-back is
+confirmed on real hardware, use the upstream maps as a *starting point* and
+go through the cabinet's tables reverse-engineering our own authoritative
+copies (offsets + checksums), the same way this session did for `smanve_101`
+and `xmn_151h`.
+
+**Drafted, not yet submitted:** a PR contributing the `checksum16` section
+back upstream for `smanve_101` (plus the `Best Combo Champion` field-width
+fix flagged earlier) — see `research/upstream-contribution/`. Contains a
+ready-to-apply patch, the final map file, and a full PR title/description
+with the verification transcript. Needs Magnus's own GitHub account to
+actually fork/push/open — not something done automatically from this task.
+
 ## Not started / explicitly out of scope for now
 
 - FX3 (Pinball FX3) save format — README already flags it as possibly encrypted, unknown
