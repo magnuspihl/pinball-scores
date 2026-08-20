@@ -1,4 +1,10 @@
-# smanve_101 ROM disassembly notes (2026-08-17, ongoing)
+# smanve_101 ROM disassembly notes (2026-08-17)
+
+> The checksum this documents is **solved and generic to Stern SAM**, so adding
+> a table almost never needs any of it — see
+> [../ADDING-A-TABLE.md](../ADDING-A-TABLE.md), which explains the two cases
+> that still do. Kept for the memory map, the toolchain and the ruled-out dead
+> ends, in case a genuinely new platform turns up.
 
 ROM: smanve_101.bin (Spider-Man Vault Edition), 66,243,212 bytes, provided by Magnus
 (kept outside the repo/git tree - do not commit; lives at /home/coder/smanve_101.zip

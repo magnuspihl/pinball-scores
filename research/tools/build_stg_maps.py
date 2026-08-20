@@ -28,6 +28,7 @@ Usage:
     python3 build_stg_maps.py --stg <file> --list
 """
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -107,6 +108,21 @@ def build_map(storage, title, values):
             })
 
     ranked.sort()
+    # Same category rollup the NVRAM maps carry: the numbered slots are the
+    # machine's main leaderboard, each champion field is its own category.
+    def key_for(name):
+        if name is None:
+            return "main"
+        return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+
+    categories = []
+    if ranked:
+        categories.append({"key": "main", "name": None, "order": "ranked",
+                           "slots": [e["label"] for _, e in ranked]})
+    categories += [{"key": key_for(e["label"]), "name": e["label"],
+                    "order": "ranked", "slots": [e["label"]]}
+                   for e in champions]
+
     game_map = {
         "_fileformat": "pinballscores-stg-0.1",
         "_notes": [title] + NOTES,
@@ -115,6 +131,10 @@ def build_map(storage, title, values):
             "title": title,
             "status": "generated from ScoresData/User/VPReg.stg and validated",
             "source_file": "User/VPReg.stg",
+            # VPX stores the string the table script wrote, with no padding of
+            # its own, so nothing may be stripped from it.
+            "initials_padding": "none",
+            "categories": categories,
         },
         "_metadata": {
             "version": 1,
@@ -125,6 +145,9 @@ def build_map(storage, title, values):
     }
     if champions:
         game_map["mode_champions"] = champions
+    body = {k: v for k, v in game_map.items() if k != "_pinballscores"}
+    game_map["_pinballscores"]["map_version"] = hashlib.sha256(
+        json.dumps(body, sort_keys=True).encode()).hexdigest()[:12]
     return game_map
 
 

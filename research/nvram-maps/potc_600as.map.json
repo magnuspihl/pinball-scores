@@ -17,12 +17,33 @@
     "Record addresses were confirmed by scanning the sample NVRAM for offsets",
     "where the checksum holds (research/tools/sam_record_scan.py). Champion",
     "slots that have never been earned are 0xFF-filled and do not appear -- re-run",
-    "the scan against a fresh dump and add any slots that have since appeared."
+    "the scan against a fresh dump and add any slots that have since appeared.",
+    "",
+    "Champion labels came out of the game ROM itself (a legally-owned copy",
+    "supplied for this purpose only, deliberately kept out of git). Stern SAM",
+    "ROMs carry two parallel tables: the slot labels as displayed, and the",
+    "default initials each slot is seeded with. Both are in NVRAM record order,",
+    "so the seeded initials still sitting in unbeaten slots confirm which label",
+    "belongs to which record -- the ordering is checked, not assumed.",
+    "The ranked slots keep the Grand Champion / First..Fourth Place naming the",
+    "other maps here use rather than the ROM's HIGH SCORE #n, since rank is",
+    "derived from the value rather than stored. Champion labels are the ROM's",
+    "own wording.",
+    "For this ROM the label table reads GRAND CHAMPION, HIGH SCORE #1..#4,",
+    "PIRATE KING, GAUNTLET CHAMP 1..3, DAVY JONES CHAMPION -- ten labels for",
+    "the ten records found by the scan. The parallel default-initials table",
+    "reads NORDMAN, OCONNOR, THEIL, GALVEZ, ROPP, KEEFER, BLACKWELL, STERN,",
+    "SCHOENBERG, XAQERY, and the champion slots in NVRAM still hold KEF, J B,",
+    "G S, M S, XAQ in that order.",
+    "Gauntlet Champ 1/2/3 look like one three-deep leaderboard (15/10/5 at",
+    "factory defaults) rather than three unrelated categories -- worth",
+    "collapsing to a single category with rank derived, the way the ranked",
+    "high scores are handled."
   ],
   "_pinballscores": {
     "cabinet_rom": "potc_600as",
     "title": "Pirates of the Caribbean (Stern, 6.00)",
-    "status": "derived from checksum scan; champion labels UNCONFIRMED",
+    "status": "derived from checksum scan; labels read out of the game ROM",
     "upstream": {
       "repo": "https://github.com/tomlogic/pinball-memory-maps",
       "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
@@ -31,7 +52,53 @@
     },
     "modified_from_upstream": true,
     "record_base": "0x02102948",
-    "record_count": 10
+    "record_count": 10,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "Grand Champion",
+          "First Place",
+          "Second Place",
+          "Third Place",
+          "Fourth Place"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "pirate_king",
+        "name": "Pirate King",
+        "order": "ranked",
+        "slots": [
+          "Pirate King"
+        ],
+        "value_type": "counter"
+      },
+      {
+        "key": "gauntlet_champ",
+        "name": "Gauntlet Champ",
+        "order": "ranked",
+        "slots": [
+          "Gauntlet Champ 1",
+          "Gauntlet Champ 2",
+          "Gauntlet Champ 3"
+        ],
+        "value_type": "counter"
+      },
+      {
+        "key": "davy_jones_champion",
+        "name": "Davy Jones Champion",
+        "order": "ranked",
+        "slots": [
+          "Davy Jones Champion"
+        ],
+        "value_type": "counter"
+      }
+    ],
+    "initials_padding": "null",
+    "map_version": "174f4c1786e3"
   },
   "_metadata": {
     "version": 1,
@@ -115,7 +182,7 @@
   ],
   "mode_champions": [
     {
-      "label": "Champion 1 (unnamed)",
+      "label": "Pirate King",
       "initials": {
         "start": "0x021029E8",
         "encoding": "ch",
@@ -129,7 +196,7 @@
       }
     },
     {
-      "label": "Champion 2 (unnamed)",
+      "label": "Gauntlet Champ 1",
       "initials": {
         "start": "0x02102A08",
         "encoding": "ch",
@@ -143,7 +210,7 @@
       }
     },
     {
-      "label": "Champion 3 (unnamed)",
+      "label": "Gauntlet Champ 2",
       "initials": {
         "start": "0x02102A28",
         "encoding": "ch",
@@ -157,7 +224,7 @@
       }
     },
     {
-      "label": "Champion 4 (unnamed)",
+      "label": "Gauntlet Champ 3",
       "initials": {
         "start": "0x02102A48",
         "encoding": "ch",
@@ -171,7 +238,7 @@
       }
     },
     {
-      "label": "Champion 5 (unnamed)",
+      "label": "Davy Jones Champion",
       "initials": {
         "start": "0x02102A68",
         "encoding": "ch",
@@ -214,27 +281,27 @@
     {
       "start": "0x021029E8",
       "length": 30,
-      "label": "Champion 1 (unnamed)"
+      "label": "Pirate King"
     },
     {
       "start": "0x02102A08",
       "length": 30,
-      "label": "Champion 2 (unnamed)"
+      "label": "Gauntlet Champ 1"
     },
     {
       "start": "0x02102A28",
       "length": 30,
-      "label": "Champion 3 (unnamed)"
+      "label": "Gauntlet Champ 2"
     },
     {
       "start": "0x02102A48",
       "length": 30,
-      "label": "Champion 4 (unnamed)"
+      "label": "Gauntlet Champ 3"
     },
     {
       "start": "0x02102A68",
       "length": 30,
-      "label": "Champion 5 (unnamed)"
+      "label": "Davy Jones Champion"
     }
   ]
 }

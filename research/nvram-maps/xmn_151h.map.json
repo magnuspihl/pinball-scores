@@ -17,12 +17,29 @@
     "Record addresses were confirmed by scanning the sample NVRAM for offsets",
     "where the checksum holds (research/tools/sam_record_scan.py). Champion",
     "slots that have never been earned are 0xFF-filled and do not appear -- re-run",
-    "the scan against a fresh dump and add any slots that have since appeared."
+    "the scan against a fresh dump and add any slots that have since appeared.",
+    "",
+    "Champion labels came out of the game ROM itself (a legally-owned copy",
+    "supplied for this purpose only, deliberately kept out of git). Stern SAM",
+    "ROMs carry two parallel tables: the slot labels as displayed, and the",
+    "default initials each slot is seeded with. Both are in NVRAM record order,",
+    "so the seeded initials still sitting in unbeaten slots confirm which label",
+    "belongs to which record -- the ordering is checked, not assumed.",
+    "The ranked slots keep the Grand Champion / First..Fourth Place naming the",
+    "other maps here use rather than the ROM's HIGH SCORE #n, since rank is",
+    "derived from the value rather than stored. Champion labels are the ROM's",
+    "own wording.",
+    "For this ROM the label table reads GRAND CHAMPION, HIGH SCORE #1..#4,",
+    "COMBO CHAMPION -- six labels for the six records found by the scan. The",
+    "parallel default-initials table reads STERN, ROPP, ROTHARMEL, THORNE,",
+    "POWERS, YANCY, and this cabinet's X-Men has never been beaten, so all six",
+    "slots still hold exactly those initials in exactly that order (G S, L R,",
+    "J R, D T, P P, YAN). That is a clean 1:1 confirmation of the ordering."
   ],
   "_pinballscores": {
     "cabinet_rom": "xmn_151h",
     "title": "X-Men LE (1.51 Home)",
-    "status": "derived from checksum scan; champion label UNCONFIRMED",
+    "status": "derived from checksum scan; labels read out of the game ROM",
     "upstream": {
       "repo": "https://github.com/tomlogic/pinball-memory-maps",
       "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
@@ -31,7 +48,33 @@
     },
     "modified_from_upstream": true,
     "record_base": "0x02103000",
-    "record_count": 6
+    "record_count": 6,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "Grand Champion",
+          "First Place",
+          "Second Place",
+          "Third Place",
+          "Fourth Place"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "combo_champion",
+        "name": "Combo Champion",
+        "order": "ranked",
+        "slots": [
+          "Combo Champion"
+        ],
+        "value_type": "counter"
+      }
+    ],
+    "initials_padding": "null",
+    "map_version": "f26032a0585a"
   },
   "_metadata": {
     "version": 1,
@@ -115,7 +158,7 @@
   ],
   "mode_champions": [
     {
-      "label": "Champion 1 (unnamed)",
+      "label": "Combo Champion",
       "initials": {
         "start": "0x021030A0",
         "encoding": "ch",
@@ -158,7 +201,7 @@
     {
       "start": "0x021030A0",
       "length": 30,
-      "label": "Champion 1 (unnamed)"
+      "label": "Combo Champion"
     }
   ]
 }

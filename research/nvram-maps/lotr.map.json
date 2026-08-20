@@ -12,7 +12,34 @@
       "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
       "path": "maps/stern/whitestar/lotr.map.json"
     },
-    "modified_from_upstream": false
+    "modified_from_upstream": false,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "Grand Champ",
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "destroy_ring_champion",
+        "name": "Destroy Ring Champion",
+        "order": "ranked",
+        "slots": [
+          "Destroy Ring Champion"
+        ],
+        "value_type": "duration",
+        "value_unit": "cs"
+      }
+    ],
+    "initials_padding": "space",
+    "map_version": "c82c0a9b337f"
   },
   "_metadata": {
     "version": 1,

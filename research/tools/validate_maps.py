@@ -55,12 +55,12 @@ def check_read(table, verbose):
         problems.append("high scores are not in descending order: %s" %
                         ", ".join(format_value(v) for v in values))
 
-    for group, label, kind, initials, value, _ in records:
+    for group, label, kind, initials, value, _field in records:
         if initials is not None and any(not (c.isprintable()) for c in initials):
             problems.append("%s: initials contain non-printable characters" % label)
         if verbose:
-            print("    %-12s %-30s %-5s %15s" %
-                  (group, label, initials, format_value(value)))
+            print("    %-12s %-30s %-5s %18s" %
+                  (group, label, initials, table.display(_field, value)))
     return problems
 
 
@@ -82,6 +82,177 @@ def check_coverage(table):
                 target = covered if offsets & protected else uncovered
                 target.append("%s/%s" % (entry.get("label"), key))
     return covered, uncovered
+
+
+def check_initials_fidelity(table):
+    """Reading initials must not eat a character the machine actually stored.
+
+    A space is one of the characters a player can pick, so ' NF' and 'NF ' are
+    different names.  Only the format's own padding may be dropped, and putting
+    the value back must reproduce the original bytes exactly.
+    """
+    problems = []
+    padding = table.map.get("_pinballscores", {}).get("initials_padding")
+    if padding not in ("none", "space", "null"):
+        return ["_pinballscores.initials_padding is %r" % padding]
+
+    for group in ("high_scores", "mode_champions"):
+        for entry in table.map.get(group, []):
+            field = entry.get("initials")
+            if not field:
+                continue
+            offsets = table.field_offsets(field)
+            before = bytes(table.data[o] for o in offsets)
+            value = table.read_field(field)
+
+            # Whether ' NF' is a name or a padded 'NF' is not decidable from
+            # the bytes -- it follows from how the platform takes initials, and
+            # the map declares that.  What is checkable is that the declaration
+            # is honoured, so a stray strip() can't creep back in.
+            if padding == "none":
+                if len(value) != len(offsets):
+                    problems.append(
+                        "%s: %r is a fixed %d-character entry, read back %d "
+                        "characters -- a stored character was dropped"
+                        % (entry["label"], before, len(offsets), len(value)))
+            elif padding == "null":
+                if "\0" in value or "\xff" in value:
+                    problems.append("%s: %r kept its terminator/filler"
+                                    % (entry["label"], value))
+            elif padding == "space":
+                if value.endswith(" "):
+                    problems.append("%s: %r kept trailing padding"
+                                    % (entry["label"], value))
+                if not before.decode("latin-1").startswith(value):
+                    problems.append("%s: %r is not a prefix of %r"
+                                    % (entry["label"], value, before))
+
+            table.write_field(field, value)
+            after = bytes(table.data[o] for o in offsets)
+            if before != after:
+                problems.append("%s: initials %r do not round-trip (%r -> %r)"
+                                % (entry["label"], value, before, after))
+    return problems
+
+
+def check_value_round_trip(table):
+    """Reading then writing a value back must not change it.
+
+    Catches the asymmetry that a presentation-only attribute causes if it leaks
+    into storage: `scale` used to be applied on read but not on write, so Lord
+    of the Rings' ring timer read as 600.0 and wrote back as 6.
+    """
+    problems = []
+    for group in ("high_scores", "mode_champions"):
+        for entry in table.map.get(group, []):
+            for key in ("score", "counter"):
+                field = entry.get(key)
+                if field is None:
+                    continue
+                before = table.read_field(field)
+                if not isinstance(before, int):
+                    problems.append("%s/%s reads as %s, not an integer -- the "
+                                    "API stores int64" % (entry["label"], key,
+                                                          type(before).__name__))
+                    continue
+                table.write_field(field, before)
+                after = table.read_field(field)
+                if before != after:
+                    problems.append("%s/%s does not round-trip: %r -> %r"
+                                    % (entry["label"], key, before, after))
+    return problems
+
+
+def check_categories(table, verbose):
+    """Every record belongs to exactly one category, and ranked ones rank."""
+    problems = []
+    categories = table.categories()
+    if not categories:
+        return ["map declares no _pinballscores.categories"]
+
+    labels = [e.get("label") for group in ("high_scores", "mode_champions")
+              for e in table.map.get(group, [])]
+    claimed = [label for c in categories for label in c["slots"]]
+    if sorted(claimed) != sorted(labels):
+        missing = set(labels) - set(claimed)
+        extra = set(claimed) - set(labels)
+        duplicated = {l for l in claimed if claimed.count(l) > 1}
+        problems.append("category slots don't match the record list "
+                        "(missing %s, unknown %s, duplicated %s)"
+                        % (sorted(missing), sorted(extra), sorted(duplicated)))
+
+    names = [c["name"] for c in categories]
+    if len(set(names)) != len(names):
+        problems.append("duplicate category names: %s" % names)
+    keys = [c.get("key") for c in categories]
+    if any(not k for k in keys):
+        problems.append("category without a key: %s" % names)
+    elif len(set(keys)) != len(keys):
+        problems.append("duplicate category keys: %s" % keys)
+    valid_types = {"score", "counter", "duration", "timestamp"}
+    valid_units = {"ms", "cs", "ds", "s", "m", "h"}
+    for c in categories:
+        if c.get("value_type") not in valid_types:
+            problems.append("category %r has value_type %r" % (c["name"], c.get("value_type")))
+        if "value_unit" in c and c["value_unit"] not in valid_units:
+            problems.append("category %r has value_unit %r" % (c["name"], c["value_unit"]))
+        if c.get("value_type") != "duration" and "value_unit" in c:
+            problems.append("category %r is not a duration but declares a unit" % c["name"])
+    if names and names[0] is not None:
+        problems.append("no unnamed category -- nothing maps to the main board")
+
+    for category in categories:
+        rows = table.read_category(category)
+        if category.get("order") == "positional":
+            continue
+        # A ranked category read straight off the slots should already be in
+        # descending order.  If it isn't, the slots have been grouped wrongly.
+        raw = []
+        for label in category["slots"]:
+            entry = table.entry_by_label(label)
+            _, field = table.value_field(entry)
+            raw.append(table.read_field(field))
+        if raw != sorted(raw, reverse=True):
+            problems.append("ranked category %r is not in descending slot "
+                            "order: %s" % (category["name"], raw))
+        if verbose:
+            print("    category %-24s %s" %
+                  (repr(category["name"]),
+                   ", ".join("%s/%s" % (i, format_value(v)) for i, v in rows)))
+    return problems
+
+
+def check_category_write(table_factory):
+    """Round-trip an API-shaped payload through the category slots."""
+    problems = []
+    table = table_factory()
+    category = next((c for c in table.categories() if c["name"] is None), None)
+    if category is None:
+        return ["no unnamed category to test an insert against"]
+
+    # Replace the whole leaderboard, which is what a Competition Mode sync
+    # does.  Deliberately supplied out of order, the way a query result might
+    # arrive, so the slot assignment is doing real work.
+    slots = category["slots"]
+    payload = [("P%02d" % i, (i + 1) * 1_000_000) for i in range(len(slots))]
+    scrambled = payload[::2] + payload[1::2]
+    table.write_category(category, scrambled)
+
+    want = sorted(payload, key=lambda row: row[1], reverse=True)
+    got = table.read_category(category)
+    if got != want:
+        problems.append("category insert read back as %s, expected %s"
+                        % (got, want))
+
+    # The highest score must land in the machine's own top slot, not merely
+    # somewhere in the category.
+    top_entry = table.entry_by_label(slots[0])
+    _, top_field = table.value_field(top_entry)
+    if table.read_field(top_field) != want[0][1]:
+        problems.append("top score did not land in %r" % slots[0])
+    if table.verify_checksums():
+        problems.append("checksums invalid after a category insert")
+    return problems
 
 
 def check_write(table_factory):
@@ -189,7 +360,11 @@ def main():
         if args.verbose and uncovered:
             print("      unprotected: %s" % ", ".join(uncovered))
 
+        problems += check_initials_fidelity(NvramMap.load(map_path, nvram_path))
+        problems += check_value_round_trip(NvramMap.load(map_path, nvram_path))
+        problems += check_categories(table, args.verbose)
         problems += check_write(lambda: NvramMap.load(map_path, nvram_path))
+        problems += check_category_write(lambda: NvramMap.load(map_path, nvram_path))
 
         if problems:
             failures += 1

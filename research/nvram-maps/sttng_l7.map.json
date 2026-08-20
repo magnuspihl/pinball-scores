@@ -14,7 +14,48 @@
       "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
       "path": "maps/williams/wpc/sttng_l7.map.json"
     },
-    "modified_from_upstream": false
+    "modified_from_upstream": false,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "Grand Champion",
+          "First Place",
+          "Second Place",
+          "Third Place",
+          "Fourth Place"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "officer_s_club",
+        "name": "Officer's Club",
+        "order": "ranked",
+        "slots": [
+          "Officer's Club #1",
+          "Officer's Club #2",
+          "Officer's Club #3",
+          "Officer's Club #4"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "q_continuum",
+        "name": "Q Continuum",
+        "order": "ranked",
+        "slots": [
+          "Q Continuum #1",
+          "Q Continuum #2",
+          "Q Continuum #3",
+          "Q Continuum #4"
+        ],
+        "value_type": "score"
+      }
+    ],
+    "initials_padding": "none",
+    "map_version": "d69d4562f7d2"
   },
   "_metadata": {
     "version": 6,

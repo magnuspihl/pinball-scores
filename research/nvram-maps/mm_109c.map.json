@@ -14,7 +14,105 @@
       "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
       "path": "maps/williams/wpc/mm_109.map.json"
     },
-    "modified_from_upstream": false
+    "modified_from_upstream": false,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "Grand Champion",
+          "First Place",
+          "Second Place",
+          "Third Place",
+          "Fourth Place"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "castle_champion",
+        "name": "Castle Champion",
+        "order": "ranked",
+        "slots": [
+          "Castle Champion"
+        ],
+        "value_type": "score",
+        "display_suffix": "Castles Destroyed"
+      },
+      {
+        "key": "joust_champion",
+        "name": "Joust Champion",
+        "order": "ranked",
+        "slots": [
+          "Joust Champion"
+        ],
+        "value_type": "score",
+        "display_suffix": "Joust Victories"
+      },
+      {
+        "key": "catapult_champion",
+        "name": "Catapult Champion",
+        "order": "ranked",
+        "slots": [
+          "Catapult Champion"
+        ],
+        "value_type": "score",
+        "display_suffix": "Catapult Slams"
+      },
+      {
+        "key": "peasant_champion",
+        "name": "Peasant Champion",
+        "order": "ranked",
+        "slots": [
+          "Peasant Champion"
+        ],
+        "value_type": "score",
+        "display_suffix": "Peasant Revolts"
+      },
+      {
+        "key": "damsel_champion",
+        "name": "Damsel Champion",
+        "order": "ranked",
+        "slots": [
+          "Damsel Champion"
+        ],
+        "value_type": "score",
+        "display_suffix": "Damsels Saved"
+      },
+      {
+        "key": "troll_champion",
+        "name": "Troll Champion",
+        "order": "ranked",
+        "slots": [
+          "Troll Champion"
+        ],
+        "value_type": "score",
+        "display_suffix": "Trolls Destroyed"
+      },
+      {
+        "key": "madness_champion",
+        "name": "Madness Champion",
+        "order": "ranked",
+        "slots": [
+          "Madness Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "king_of_the_realm",
+        "name": "King of the Realm",
+        "order": "positional",
+        "slots": [
+          "King of the Realm #1",
+          "King of the Realm #2",
+          "King of the Realm #3",
+          "King of the Realm #4"
+        ],
+        "value_type": "counter"
+      }
+    ],
+    "initials_padding": "none",
+    "map_version": "f5913f9fa440"
   },
   "_metadata": {
     "version": 5,

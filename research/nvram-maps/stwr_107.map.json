@@ -13,7 +13,25 @@
       "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
       "path": "maps/dataeast/version3/stwr_103.map.json"
     },
-    "modified_from_upstream": false
+    "modified_from_upstream": false,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "First",
+          "Second",
+          "Third",
+          "Fourth",
+          "Fifth",
+          "Sixth"
+        ],
+        "value_type": "score"
+      }
+    ],
+    "initials_padding": "none",
+    "map_version": "055e63c56fad"
   },
   "_metadata": {
     "version": 7,
