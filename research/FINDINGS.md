@@ -1,5 +1,10 @@
 # Competition Mode & score write-back — findings (2026-08-17)
 
+> **Follow-up:** this document covers the two tables the investigation started
+> with (`smanve_101` and `gotg_2020`). All eighteen tables on the cabinet have
+> since been mapped and verified — see [TABLE-MAPPING.md](TABLE-MAPPING.md),
+> which supersedes the "Tooling inventory" section below.
+
 Written for whoever picks up the CLI reimplementation and/or the new score-ingestion
 API, so the context from this investigation doesn't have to be rediscovered. Everything
 here came out of one long working session; see `research/rom-analysis/NOTES.md` and
@@ -164,10 +169,20 @@ deliberately doesn't attempt.
 
 ## Tooling inventory (`research/`)
 
-- `nvram-maps/smanve_101.map.json` — hardware-verified field offsets + the checksum
-  derivation writeup.
-- `nvram-maps/xmn_151h.map.json` — derived-by-pattern-matching field offsets, checksum
-  presumed-not-confirmed, as above.
+*(Superseded by [TABLE-MAPPING.md](TABLE-MAPPING.md), which covers all eighteen
+tables and adds `tools/`. The map files listed here have been regenerated in
+file format v0.8 with their `checksum16` sections.)*
+
+- `nvram-maps/` — one map per NVRAM table, `stg-maps/` — one per VPX table.
+- `tools/validate_maps.py` — checks every map against real NVRAM, including a
+  simulated write.
+- `tools/sam_record_scan.py` — rediscovers a Stern SAM table's record layout
+  from any dump, using the checksum as a signature.
+- `tools/find_checksums.py` — finds (or rules out) a checksum protecting a byte
+  range, given two dumps of one ROM.
+- `tools/patch_score.py` — map-driven writer for *any* platform (WPC BCD behind
+  a block checksum, SAM ints behind a per-record checksum, Whitestar/Data East
+  with no checksum), superseding the SAM-only `patch_nvram_score.py` below.
 - `patch_nvram_score.py` — patches NVRAM records with correct checksums, self-verifying.
 - `patch_stg_score.py` — patches STG (VPX) records, same-length-only, self-verifying.
 - `rom-analysis/NOTES.md` — the detailed ROM-disassembly trail (memory map, function
