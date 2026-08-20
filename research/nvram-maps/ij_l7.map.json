@@ -14,7 +14,24 @@
       "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
       "path": "maps/williams/wpc/ij_l7.map.json"
     },
-    "modified_from_upstream": false
+    "modified_from_upstream": false,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "Grand Champion",
+          "First Place",
+          "Second Place",
+          "Third Place",
+          "Fourth Place"
+        ],
+        "value_type": "score"
+      }
+    ],
+    "initials_padding": "none",
+    "map_version": "361278322725"
   },
   "_metadata": {
     "version": 5,

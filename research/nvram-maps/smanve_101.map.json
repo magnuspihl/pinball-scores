@@ -30,7 +30,87 @@
     },
     "modified_from_upstream": true,
     "record_base": "0x02102B80",
-    "record_count": 12
+    "record_count": 12,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "Grand Champion",
+          "First Place",
+          "Second Place",
+          "Third Place",
+          "Fourth Place"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "combo_champion",
+        "name": "Combo Champion",
+        "order": "ranked",
+        "slots": [
+          "Combo Champion"
+        ],
+        "value_type": "counter"
+      },
+      {
+        "key": "best_combo_champion",
+        "name": "Best Combo Champion",
+        "order": "ranked",
+        "slots": [
+          "Best Combo Champion"
+        ],
+        "value_type": "counter"
+      },
+      {
+        "key": "spider_champion",
+        "name": "Spider Champion",
+        "order": "ranked",
+        "slots": [
+          "Spider Champion"
+        ],
+        "value_type": "counter"
+      },
+      {
+        "key": "spider_sense_champion",
+        "name": "Spider Sense Champion",
+        "order": "ranked",
+        "slots": [
+          "Spider Sense Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "battle_royale_champion",
+        "name": "Battle Royale Champion",
+        "order": "ranked",
+        "slots": [
+          "Battle Royale Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "super_hero_champion",
+        "name": "Super Hero Champion",
+        "order": "ranked",
+        "slots": [
+          "Super Hero Champion"
+        ],
+        "value_type": "score"
+      },
+      {
+        "key": "best_bonus_champion",
+        "name": "Best Bonus Champion",
+        "order": "ranked",
+        "slots": [
+          "Best Bonus Champion"
+        ],
+        "value_type": "score"
+      }
+    ],
+    "initials_padding": "null",
+    "map_version": "49db78bbad4e"
   },
   "_metadata": {
     "version": 1,
@@ -138,9 +218,10 @@
         "length": 11
       },
       "counter": {
-        "start": "0x02102C58",
+        "start": "0x02102C5A",
         "encoding": "int",
-        "length": 4
+        "length": 1,
+        "_note": "combo count; the u16 at +0x18 is a separate field, always 1 in every dump seen so far"
       }
     },
     {

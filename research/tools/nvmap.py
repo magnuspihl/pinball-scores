@@ -81,10 +81,24 @@ class NvramMap:
         raw = bytes(self.data[o] for o in self.field_offsets(field))
 
         if encoding == "ch":
+            # Initials are whatever the player picked, and a space is one of
+            # the characters they can pick: Batman's fourth place is ' NF' and
+            # Addams Family's is 'CG '.  So only the format's own padding may
+            # be removed, never a character the machine stored.
+            #   null    NUL-terminated, 0xFF filler after it (Stern SAM)
+            #   none    the field is exactly the entry; nothing to strip (WPC,
+            #           Data East -- always 3 chosen characters)
+            #   space   variable-length entry in a wider field, space-padded
+            #           (Whitestar: 10 bytes holding anything up to 10 chars,
+            #           so trailing spaces after a short name are padding and
+            #           are indistinguishable from a chosen trailing space)
             text = raw.decode("latin-1")
             if field.get("null") == "terminate":
-                text = text.split("\0")[0]
-            return text.rstrip("\xff").rstrip()
+                return text.split("\0")[0].rstrip("\xff")
+            padding = self.map.get("_pinballscores", {}).get(
+                "initials_padding", "none")
+            text = text.rstrip("\xff")
+            return text.rstrip(" ") if padding == "space" else text
 
         if encoding == "wpc_rtc":
             year = (raw[0] << 8) | raw[1]
@@ -97,19 +111,37 @@ class NvramMap:
             value = 0
             for byte in raw:
                 value = value * 100 + (byte >> 4) * 10 + (byte & 0x0F)
-            return self._scaled(field, value)
+            return value
 
         if encoding == "int":
             order = "big" if self.platform.big_endian else "little"
-            return self._scaled(field, int.from_bytes(raw, order))
+            return int.from_bytes(raw, order)
+
+        if encoding == "bool":
+            value = any(raw)
+            return not value if field.get("invert") else value
 
         raise ValueError("unsupported encoding %r" % encoding)
 
     @staticmethod
-    def _scaled(field, value):
+    def display(field, value):
+        """Human-readable rendering. Scale is presentation, never storage.
+
+        Reading returns the raw stored integer so that read and write are
+        symmetric and so the score API can be handed the machine's own number
+        with its own unit (Lord of the Rings' ring timer counts hundredths of a
+        second, submitted as-is with value_unit "cs"), rather than a scaled
+        float -- which is how a real score once became 130,296,088.
+        """
         if "scale" in field:
-            return value * field["scale"]
-        return value
+            value = value * field["scale"]
+            text = ("%.2f" % value).rstrip("0").rstrip(".")
+        else:
+            text = "{:,}".format(value) if isinstance(value, int) else str(value)
+        for extra in (field.get("units"), field.get("suffix")):
+            if extra:
+                text += " " + extra.strip()
+        return text
 
     def records(self):
         """Yield (group, label, value_kind, initials, value, field) per record."""
@@ -207,6 +239,69 @@ class NvramMap:
             for offset, byte in zip(checksum_offsets,
                                     self.expected_checksum(bits, data_offsets)):
                 self.data[offset] = byte
+
+    # -- categories -------------------------------------------------------
+    #
+    # A map's sections say where bytes live; `_pinballscores.categories` says
+    # how those slots roll up into what the score API stores.  The machine's
+    # main leaderboard is one category with no name, spread across the Grand
+    # Champion slot and the ranked slots below it.  Ranked champion groups
+    # ("Q Continuum #1..#4") are one category too, not four.  Rank is derived
+    # from the value, so it is never stored -- which is exactly why insertion
+    # needs this: to put a list of scores back on a machine you have to know
+    # which physical slots a category owns, and in what order to fill them.
+
+    def entry_by_label(self, label):
+        for group in ("high_scores", "mode_champions"):
+            for entry in self.map.get(group, []):
+                if entry.get("label") == label:
+                    return entry
+        raise KeyError("no record labelled %r" % label)
+
+    @staticmethod
+    def value_field(entry):
+        for key in ("score", "counter"):
+            if key in entry:
+                return key, entry[key]
+        raise ValueError("%r has no score or counter field" % entry.get("label"))
+
+    def categories(self):
+        return self.map.get("_pinballscores", {}).get("categories", [])
+
+    def read_category(self, category):
+        """Read one category as the API stores it: [(initials, value), ...].
+
+        Ranked categories come back sorted by value, because slot order is not
+        rank on every platform -- VPX tables in particular do not re-sort.
+        """
+        rows = []
+        for label in category["slots"]:
+            entry = self.entry_by_label(label)
+            _, field = self.value_field(entry)
+            rows.append((self.read_field(entry["initials"]), self.read_field(field)))
+        if category.get("order") != "positional":
+            rows.sort(key=lambda row: row[1], reverse=True)
+        return rows
+
+    def write_category(self, category, rows):
+        """Lay a category's scores back into its physical slots, best first.
+
+        `rows` is [(initials, value), ...] straight off the API.  Supplying
+        fewer rows than the category has slots leaves the remaining slots
+        alone; supplying more is an error rather than a silent truncation.
+        """
+        slots = category["slots"]
+        if len(rows) > len(slots):
+            raise ValueError("category %r has %d slot(s), got %d row(s)"
+                             % (category["name"], len(slots), len(rows)))
+        if category.get("order") != "positional":
+            rows = sorted(rows, key=lambda row: row[1], reverse=True)
+        for label, (initials, value) in zip(slots, rows):
+            entry = self.entry_by_label(label)
+            _, field = self.value_field(entry)
+            if "initials" in entry:
+                self.write_field(entry["initials"], initials)
+            self.write_field(field, value)
 
     def protected_offsets(self):
         covered = set()

@@ -30,7 +30,24 @@
     },
     "modified_from_upstream": true,
     "record_base": "0x02102F80",
-    "record_count": 5
+    "record_count": 5,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "Grand Champion",
+          "First Place",
+          "Second Place",
+          "Third Place",
+          "Fourth Place"
+        ],
+        "value_type": "score"
+      }
+    ],
+    "initials_padding": "null",
+    "map_version": "078934acf5ec"
   },
   "_metadata": {
     "version": 1,

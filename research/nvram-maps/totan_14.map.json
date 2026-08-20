@@ -15,7 +15,24 @@
       "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
       "path": "maps/williams/wpc/totan_14.map.json"
     },
-    "modified_from_upstream": false
+    "modified_from_upstream": false,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "Grand Champion",
+          "1st",
+          "2nd",
+          "3rd",
+          "4th"
+        ],
+        "value_type": "score"
+      }
+    ],
+    "initials_padding": "none",
+    "map_version": "35003f41aa8a"
   },
   "_metadata": {
     "version": 6,

@@ -1,7 +1,8 @@
 # STG maps
 
 One map per Visual Pinball X table on the cabinet. See
-[../TABLE-MAPPING.md](../TABLE-MAPPING.md) for context.
+[../TABLE-MAPPING.md](../TABLE-MAPPING.md) for context, and
+[../ADDING-A-TABLE.md](../ADDING-A-TABLE.md) (Path A) to add another.
 
 VPX-native tables don't emulate a ROM, so there is no NVRAM and nothing to map
 in memory. They persist state through `User/VPReg.stg`, an OLE Compound File:
@@ -24,6 +25,12 @@ Two things to know:
 - **Slot number is not rank.** These table scripts do not necessarily re-sort
   on write; Game of Thrones currently holds 152,329,750 in slot 9 and
   4,000,000 in slot 13. Derive rank by sorting the values you read.
+
+Like the NVRAM maps, each file carries a `_pinballscores.categories` block
+giving the category → ordered-slots rollup the score API stores: the numbered
+slots are one unnamed category (the main board), and each champion field is a
+category of its own. That is what makes insertion well-defined — see
+[../TABLE-MAPPING.md](../TABLE-MAPPING.md).
 
 Regenerate or re-check against a fresh file with:
 

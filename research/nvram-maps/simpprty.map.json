@@ -13,7 +13,24 @@
       "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
       "path": "maps/stern/whitestar/simpprty.map.json"
     },
-    "modified_from_upstream": false
+    "modified_from_upstream": false,
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "Grand Champ",
+          "#1",
+          "#2",
+          "#3",
+          "#4"
+        ],
+        "value_type": "score"
+      }
+    ],
+    "initials_padding": "space",
+    "map_version": "5358afaf2691"
   },
   "_metadata": {
     "version": 3,

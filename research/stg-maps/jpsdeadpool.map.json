@@ -20,7 +20,22 @@
     "cabinet_table": "jpsdeadpool",
     "title": "Deadpool (VPX)",
     "status": "generated from ScoresData/User/VPReg.stg and validated",
-    "source_file": "User/VPReg.stg"
+    "source_file": "User/VPReg.stg",
+    "initials_padding": "none",
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "High Score #1",
+          "High Score #2",
+          "High Score #3",
+          "High Score #4"
+        ]
+      }
+    ],
+    "map_version": "6f789922f31a"
   },
   "_metadata": {
     "version": 1,

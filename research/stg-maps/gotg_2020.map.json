@@ -20,7 +20,55 @@
     "cabinet_table": "gotg_2020",
     "title": "Guardians of the Galaxy (VPX)",
     "status": "generated from ScoresData/User/VPReg.stg and validated",
-    "source_file": "User/VPReg.stg"
+    "source_file": "User/VPReg.stg",
+    "initials_padding": "none",
+    "categories": [
+      {
+        "key": "main",
+        "name": null,
+        "order": "ranked",
+        "slots": [
+          "High Score #1",
+          "High Score #2",
+          "High Score #3",
+          "High Score #4",
+          "High Score #5"
+        ]
+      },
+      {
+        "key": "cb",
+        "name": "CB",
+        "order": "ranked",
+        "slots": [
+          "CB"
+        ]
+      },
+      {
+        "key": "combo",
+        "name": "Combo",
+        "order": "ranked",
+        "slots": [
+          "Combo"
+        ]
+      },
+      {
+        "key": "immo",
+        "name": "IMMO",
+        "order": "ranked",
+        "slots": [
+          "IMMO"
+        ]
+      },
+      {
+        "key": "xandar",
+        "name": "Xandar",
+        "order": "ranked",
+        "slots": [
+          "Xandar"
+        ]
+      }
+    ],
+    "map_version": "9c608ef69e32"
   },
   "_metadata": {
     "version": 1,
