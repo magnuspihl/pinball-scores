@@ -1,0 +1,208 @@
+{
+  "_fileformat": "pinballscores-stg-0.1",
+  "_notes": [
+    "Game of Thrones (VPX)",
+    "Visual Pinball X native table. State lives in User/VPReg.stg, an OLE",
+    "Compound File: one storage per table, one stream per setting, each stream",
+    "holding a UTF-16LE string. Scores are decimal strings, initials are plain",
+    "strings. There is no checksum and no ROM to reject a written value, so",
+    "insertion is a straight stream rewrite -- confirmed on the real cabinet in",
+    "2026-08-17 for gotg_2020 (patched scores displayed, and were then beaten",
+    "and overwritten by real play).",
+    "Rewriting a stream in place only works when the new value is the same",
+    "length; a longer or shorter value needs the CFB directory and FAT updated.",
+    "research/patch_stg_score.py takes the same-length shortcut (zero-pad the",
+    "numeric string). A production writer should use a real CFB writer instead --",
+    "the app already talks to ole32's IStorage via PinballScores/MSStorage, which",
+    "supports resizing streams natively."
+  ],
+  "_pinballscores": {
+    "cabinet_table": "gameofthrones",
+    "title": "Game of Thrones (VPX)",
+    "status": "generated from ScoresData/User/VPReg.stg and validated",
+    "source_file": "User/VPReg.stg"
+  },
+  "_metadata": {
+    "version": 1,
+    "platform": "vpx-stg",
+    "storage": "gameofthrones"
+  },
+  "high_scores": [
+    {
+      "label": "High Score #1",
+      "initials": {
+        "stream": "HighScore1Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore1",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #2",
+      "initials": {
+        "stream": "HighScore2Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore2",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #3",
+      "initials": {
+        "stream": "HighScore3Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore3",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #4",
+      "initials": {
+        "stream": "HighScore4Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore4",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #5",
+      "initials": {
+        "stream": "HighScore5Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore5",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #6",
+      "initials": {
+        "stream": "HighScore6Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore6",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #7",
+      "initials": {
+        "stream": "HighScore7Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore7",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #8",
+      "initials": {
+        "stream": "HighScore8Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore8",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #9",
+      "initials": {
+        "stream": "HighScore9Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore9",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #10",
+      "initials": {
+        "stream": "HighScore10Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore10",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #11",
+      "initials": {
+        "stream": "HighScore11Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore11",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #12",
+      "initials": {
+        "stream": "HighScore12Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore12",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #13",
+      "initials": {
+        "stream": "HighScore13Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore13",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #14",
+      "initials": {
+        "stream": "HighScore14Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore14",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #15",
+      "initials": {
+        "stream": "HighScore15Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore15",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #16",
+      "initials": {
+        "stream": "HighScore16Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore16",
+        "encoding": "decimal_string"
+      }
+    }
+  ]
+}

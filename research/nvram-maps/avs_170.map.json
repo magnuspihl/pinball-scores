@@ -1,7 +1,7 @@
 {
   "_fileformat": 0.8,
   "_notes": [
-    "X-Men LE (1.51 Home) -- Stern SAM.",
+    "The Avengers (1.70) -- Stern SAM.",
     "Stern SAM platform. ARM AT91 CPU, 128KB NVRAM mapped at 0x02100000;",
     "file offset = CPU address - 0x02100000.",
     "Each score record is a 32-byte (0x20) struct:",
@@ -20,30 +20,86 @@
     "the scan against a fresh dump and add any slots that have since appeared."
   ],
   "_pinballscores": {
-    "cabinet_rom": "xmn_151h",
-    "title": "X-Men LE (1.51 Home)",
-    "status": "derived from checksum scan; champion label UNCONFIRMED",
+    "cabinet_rom": "avs_170",
+    "title": "The Avengers (1.70)",
+    "status": "upstream fields confirmed by checksum scan; checksum16 added",
     "upstream": {
       "repo": "https://github.com/tomlogic/pinball-memory-maps",
       "commit": "aab556e3059f4463740293e01531b2f9d817ed89",
-      "path": null,
-      "note": "no upstream map exists for this ROM"
+      "path": "maps/stern/sam/avs_170.map.json"
     },
     "modified_from_upstream": true,
-    "record_base": "0x02103000",
-    "record_count": 6
+    "record_base": "0x02102F80",
+    "record_count": 5
   },
   "_metadata": {
     "version": 1,
     "license": "GNU Lesser General Public License v3.0",
     "platform": "stern-sam",
     "roms": [
-      "xmn_151h"
+      "avs_170",
+      "avs_170c"
     ]
   },
   "high_scores": [
     {
       "label": "Grand Champion",
+      "initials": {
+        "start": "0x02102F80",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02102F98",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "First Place",
+      "initials": {
+        "start": "0x02102FA0",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02102FB8",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Second Place",
+      "initials": {
+        "start": "0x02102FC0",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02102FD8",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Third Place",
+      "initials": {
+        "start": "0x02102FE0",
+        "encoding": "ch",
+        "null": "terminate",
+        "length": 11
+      },
+      "score": {
+        "start": "0x02102FF8",
+        "encoding": "int",
+        "length": 4
+      }
+    },
+    {
+      "label": "Fourth Place",
       "initials": {
         "start": "0x02103000",
         "encoding": "ch",
@@ -55,110 +111,33 @@
         "encoding": "int",
         "length": 4
       }
-    },
-    {
-      "label": "First Place",
-      "initials": {
-        "start": "0x02103020",
-        "encoding": "ch",
-        "null": "terminate",
-        "length": 11
-      },
-      "score": {
-        "start": "0x02103038",
-        "encoding": "int",
-        "length": 4
-      }
-    },
-    {
-      "label": "Second Place",
-      "initials": {
-        "start": "0x02103040",
-        "encoding": "ch",
-        "null": "terminate",
-        "length": 11
-      },
-      "score": {
-        "start": "0x02103058",
-        "encoding": "int",
-        "length": 4
-      }
-    },
-    {
-      "label": "Third Place",
-      "initials": {
-        "start": "0x02103060",
-        "encoding": "ch",
-        "null": "terminate",
-        "length": 11
-      },
-      "score": {
-        "start": "0x02103078",
-        "encoding": "int",
-        "length": 4
-      }
-    },
-    {
-      "label": "Fourth Place",
-      "initials": {
-        "start": "0x02103080",
-        "encoding": "ch",
-        "null": "terminate",
-        "length": 11
-      },
-      "score": {
-        "start": "0x02103098",
-        "encoding": "int",
-        "length": 4
-      }
-    }
-  ],
-  "mode_champions": [
-    {
-      "label": "Champion 1 (unnamed)",
-      "initials": {
-        "start": "0x021030A0",
-        "encoding": "ch",
-        "null": "terminate",
-        "length": 11
-      },
-      "counter": {
-        "start": "0x021030B8",
-        "encoding": "int",
-        "length": 4
-      }
     }
   ],
   "checksum16": [
     {
-      "start": "0x02103000",
+      "start": "0x02102F80",
       "length": 30,
       "label": "Grand Champion"
     },
     {
-      "start": "0x02103020",
+      "start": "0x02102FA0",
       "length": 30,
       "label": "First Place"
     },
     {
-      "start": "0x02103040",
+      "start": "0x02102FC0",
       "length": 30,
       "label": "Second Place"
     },
     {
-      "start": "0x02103060",
+      "start": "0x02102FE0",
       "length": 30,
       "label": "Third Place"
     },
     {
-      "start": "0x02103080",
+      "start": "0x02103000",
       "length": 30,
       "label": "Fourth Place"
-    },
-    {
-      "start": "0x021030A0",
-      "length": 30,
-      "label": "Champion 1 (unnamed)"
     }
   ]
 }
