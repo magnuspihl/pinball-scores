@@ -360,3 +360,11 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Zip bundles produced to hand a result file to the user (see demo-reset-files.zip)
+/demo-reset-files.zip
+/demo-reset-files-v2-space-marker.zip
+/demo-reset-files-v3-star-wars-shadow-fix.zip
+/demo-reset-files-v4-batman-shadow-guess.zip
+/wpc-writeback-test.zip
+/dataeast-nvram-patch.zip
