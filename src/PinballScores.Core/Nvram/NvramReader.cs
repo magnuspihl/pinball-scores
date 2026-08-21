@@ -28,73 +28,21 @@ public sealed class NvramReader
     /// </summary>
     public bool ChecksumsValid(out string? failure)
     {
-        foreach (var region in _map.Checksums)
+        foreach (var span in NvramChecksum.Spans(_map, _platform, _data.Length))
         {
-            foreach (var (start, end) in Subranges(region))
+            var expected = NvramChecksum.Expected(_data, span, _platform.LittleEndian);
+            for (var i = 0; i < expected.Length; i++)
             {
-                if (!VerifyRange(region, start, end, out failure)) return false;
+                if (_data[span.ChecksumOffset + i] == expected[i]) continue;
+
+                failure = $"checksum{span.Width * 8} mismatch at 0x{span.Address:X} " +
+                          $"({span.Label ?? "unlabelled"})";
+                return false;
             }
         }
 
         failure = null;
         return true;
-    }
-
-    /// <summary>
-    /// A region is normally one checksummed range. With "groupings" it is a series
-    /// of fixed-size records, each ending in its own checksum.
-    /// </summary>
-    private static IEnumerable<(long Start, long End)> Subranges(ChecksumRegion region)
-    {
-        if (region.Groupings is not { } size || size <= 0)
-        {
-            yield return (region.Start, region.End);
-            yield break;
-        }
-
-        for (var start = region.Start; start + size - 1 <= region.End; start += size)
-            yield return (start, start + size - 1);
-    }
-
-    private bool VerifyRange(ChecksumRegion region, long start, long end, out string? failure)
-    {
-        failure = null;
-
-        var startOffset = ToOffset(start);
-        var endOffset = ToOffset(end);
-        if (startOffset < 0 || endOffset >= _data.Length || endOffset < startOffset) return true;
-
-        // Without an explicit checksum address the stored value occupies the last
-        // Width bytes of the range and the sum covers everything before it.
-        var checksumOffset = region.ChecksumAddress is { } address
-            ? ToOffset(address)
-            : endOffset - region.Width + 1;
-        var sumEnd = region.ChecksumAddress is null ? checksumOffset - 1 : endOffset;
-
-        if (checksumOffset < 0 || checksumOffset + region.Width > _data.Length) return true;
-
-        long sum = 0;
-        for (var i = startOffset; i <= sumEnd; i++) sum += _data[i];
-
-        if (region.Width == 1)
-        {
-            // checksum8: the low byte of the total, including the stored byte, is 0xFF.
-            var expected = (byte)((0xFF - sum) & 0xFF);
-            if (_data[checksumOffset] == expected) return true;
-            failure = $"checksum8 mismatch at 0x{start:X} ({region.Label ?? "unlabelled"})";
-            return false;
-        }
-
-        // checksum16: 0xFFFF minus the sum of all preceding bytes, stored in the
-        // platform's byte order (big on the 6809/6808 games, little on Stern SAM).
-        var expected16 = (int)((0xFFFF - sum) & 0xFFFF);
-        var actual = _platform.LittleEndian
-            ? (_data[checksumOffset + 1] << 8) | _data[checksumOffset]
-            : (_data[checksumOffset] << 8) | _data[checksumOffset + 1];
-        if (actual == expected16) return true;
-
-        failure = $"checksum16 mismatch at 0x{start:X} ({region.Label ?? "unlabelled"})";
-        return false;
     }
 
     /// <summary>Reads every populated slot on the machine, already categorised.</summary>

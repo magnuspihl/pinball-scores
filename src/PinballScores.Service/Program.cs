@@ -72,11 +72,7 @@ try
         // service model ever proves awkward and Task Scheduler is needed again.
         using var host = builder.Build();
         var logger = host.Services.GetRequiredService<ILogger<Program>>();
-        var effective = host.Services.GetRequiredService<IOptions<SyncOptions>>().Value;
-        // Log what was actually resolved: a mistyped path is otherwise invisible,
-        // showing up only as a table silently producing no scores.
-        logger.LogInformation("Config: nvram={Nvram} vpreg={VpReg} api={Api} writeBack={WriteBack}",
-            effective.NvramPath, effective.VpRegPath, effective.ApiBaseUrl, effective.EnableWriteBack);
+        ServiceHost.LogEffectiveSettings(host.Services);
         try
         {
             var report = await host.Services.GetRequiredService<ScoreSyncRunner>().RunAsync();
@@ -95,7 +91,11 @@ try
     builder.Services.AddHostedService<SyncWorker>();
     builder.Services.AddWindowsService(options => options.ServiceName = "PinballScores");
 
-    await builder.Build().RunAsync();
+    var serviceHost = builder.Build();
+    // The service reports this too: "my settings are not being picked up" is
+    // otherwise indistinguishable from "the service is not running".
+    ServiceHost.LogEffectiveSettings(serviceHost.Services);
+    await serviceHost.RunAsync();
     return 0;
 }
 catch (Exception ex)

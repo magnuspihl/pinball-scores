@@ -46,16 +46,20 @@ public sealed class ScoreSyncRunner
 
     public async Task<SyncReport> RunAsync(CancellationToken cancellationToken = default)
     {
-        var (scores, read, skipped) = Extract();
+        var (scores, tables, skipped) = Extract();
 
         _log.LogInformation("Read {Scores} scores from {Read} tables ({Skipped} skipped)",
-            scores.Count, read, skipped);
+            scores.Count, tables.Count, skipped);
 
         var submission = await SubmitAsync(scores, cancellationToken).ConfigureAwait(false);
-        var written = await WriteBackAsync(scores, cancellationToken).ConfigureAwait(false);
+
+        // Every table that was read, not just those that had scores. A blanked
+        // machine yields nothing, and it is exactly the one that most needs the
+        // API's board written onto it.
+        var written = await WriteBackAsync(tables, cancellationToken).ConfigureAwait(false);
 
         return new SyncReport(
-            read,
+            tables.Count,
             skipped,
             scores.Count,
             submission?.Inserted ?? 0,
@@ -64,10 +68,11 @@ public sealed class ScoreSyncRunner
             written);
     }
 
-    private (List<ScoreEntry> Scores, int Read, int Skipped) Extract()
+    private (List<ScoreEntry> Scores, List<string> Tables, int Skipped) Extract()
     {
         var scores = new List<ScoreEntry>();
-        int read = 0, skipped = 0;
+        var tables = new List<string>();
+        var skipped = 0;
 
         foreach (var source in _sources)
         {
@@ -105,12 +110,12 @@ public sealed class ScoreSyncRunner
                     continue;
                 }
 
-                read++;
+                tables.Add(result.Table);
                 scores.AddRange(result.Scores.Where(IsSubmittable));
             }
         }
 
-        return (scores, read, skipped);
+        return (scores, tables, skipped);
     }
 
     /// <summary>
@@ -161,7 +166,7 @@ public sealed class ScoreSyncRunner
         }
     }
 
-    private async Task<int> WriteBackAsync(IReadOnlyList<ScoreEntry> scores, CancellationToken cancellationToken)
+    private async Task<int> WriteBackAsync(IReadOnlyList<string> tables, CancellationToken cancellationToken)
     {
         // A dry run still computes and reports the plan — that is the point of it.
         if ((!_options.EnableWriteBack && !_options.DryRun) || _writers.Count == 0) return 0;
@@ -174,7 +179,7 @@ public sealed class ScoreSyncRunner
         }
 
         var written = 0;
-        foreach (var table in scores.Select(s => s.Table).Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (var table in tables.Distinct(StringComparer.OrdinalIgnoreCase))
         {
             var writer = _writers.FirstOrDefault(w => w.Handles(table));
             if (writer is null) continue;
@@ -183,7 +188,7 @@ public sealed class ScoreSyncRunner
             {
                 var slots = Math.Max(writer.SlotCount(table, null), 1);
                 var board = await _api.GetBoardAsync(table, slots, cancellationToken).ConfigureAwait(false);
-                var result = await writer.WriteAsync(table, board, cancellationToken).ConfigureAwait(false);
+                var result = await writer.WriteAsync(table, board, _options.DryRun, cancellationToken).ConfigureAwait(false);
 
                 if (result.Applied) written++;
                 else _log.LogDebug("Write-back for {Table} not applied: {Reason}", table, result.Skipped);
@@ -205,13 +210,29 @@ public sealed class ScoreSyncRunner
         return written;
     }
 
+    /// <summary>
+    /// The first configured process that is running, or null.
+    ///
+    /// Matched by prefix rather than exactly, because the executable name varies by
+    /// build — "VPinballX" has to catch "VPinballX64" and "VPinballX_GL" too. An
+    /// exact match that silently fails is the dangerous case: write-back would then
+    /// run while a table is open, and the emulator would overwrite it on exit.
+    ///
+    /// Note this should list the *emulators*, not the front end. A launcher such as
+    /// PinUp Popper stays running the whole time the cabinet is on, so including it
+    /// would disable write-back permanently.
+    /// </summary>
     private string? RunningGame()
     {
         foreach (var name in _options.BlockingProcesses)
         {
+            if (string.IsNullOrWhiteSpace(name)) continue;
+
             try
             {
-                if (System.Diagnostics.Process.GetProcessesByName(name).Length > 0) return name;
+                var match = System.Diagnostics.Process.GetProcesses()
+                    .FirstOrDefault(p => p.ProcessName.StartsWith(name, StringComparison.OrdinalIgnoreCase));
+                if (match is not null) return match.ProcessName;
             }
             catch (InvalidOperationException)
             {
@@ -234,16 +255,13 @@ public sealed class ScoreSyncRunner
         if (!string.IsNullOrWhiteSpace(options.NvramPath))
         {
             sources.Add(new NvramScoreSource(options.NvramPath, catalog));
-            writers.Add(new NvramScoreWriter(catalog, placeholder));
+            writers.Add(new NvramScoreWriter(catalog, options.NvramPath, placeholder));
         }
 
         if (!string.IsNullOrWhiteSpace(options.VpRegPath))
         {
             sources.Add(new StgScoreSource(options.VpRegPath, catalog));
-            writers.Add(new StgScoreWriter(
-                options.VpRegPath,
-                catalog.StgMaps.Select(m => m.Storage).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                placeholder));
+            writers.Add(new StgScoreWriter(options.VpRegPath, catalog, placeholder));
         }
 
         var api = new PinballApiClient(new PinballApiOptions
