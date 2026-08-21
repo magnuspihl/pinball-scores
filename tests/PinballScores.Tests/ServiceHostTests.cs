@@ -66,6 +66,22 @@ public class ServiceHostTests
     {
         Assert.True(Path.IsPathRooted(ServiceHost.MachineSettingsPath));
         Assert.True(Path.IsPathRooted(ServiceHost.LogDirectory));
+        Assert.True(Path.IsPathRooted(ServiceHost.PackagedSettingsPath));
+    }
+
+    [Fact]
+    public void TheTwoSettingsFilesAreDistinctLocations()
+    {
+        // Same filename, opposite lifetimes: the packaged one is replaced by every
+        // update, the machine one is never touched. Confusing them is the single
+        // easiest way to lose a cabinet's configuration.
+        Assert.NotEqual(ServiceHost.PackagedSettingsPath, ServiceHost.MachineSettingsPath);
+
+        // The machine copy must live outside the install root, or an update would
+        // reach it.
+        Assert.False(
+            ServiceHost.MachineSettingsPath.StartsWith(AppContext.BaseDirectory, StringComparison.OrdinalIgnoreCase),
+            "machine settings must not live inside the directory an update replaces");
     }
 
     [Fact]

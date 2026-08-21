@@ -1,5 +1,9 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using PinballScores.Core;
 
 namespace PinballScores.Service;
 
@@ -16,6 +20,31 @@ public static class ServiceHost
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
         "PinballScores",
         "appsettings.json");
+
+    /// <summary>Defaults shipped inside the package. Replaced by every update.</summary>
+    public static string PackagedSettingsPath => Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+
+    /// <summary>
+    /// Reports which settings files were actually found and what they resolved to.
+    ///
+    /// Two files with the same name and very different lifetimes is inherently
+    /// confusing — the packaged one is replaced by every update, the machine one
+    /// never is — so the log has to say which was in play. Without it, editing the
+    /// wrong file looks identical to the settings not applying.
+    /// </summary>
+    public static void LogEffectiveSettings(IServiceProvider services)
+    {
+        var log = services.GetRequiredService<ILogger<Program>>();
+        var options = services.GetRequiredService<IOptions<SyncOptions>>().Value;
+
+        log.LogInformation("Settings: packaged={Packaged} machine={Machine}",
+            File.Exists(PackagedSettingsPath) ? PackagedSettingsPath : "(none)",
+            File.Exists(MachineSettingsPath) ? MachineSettingsPath : "(none - using packaged defaults)");
+
+        log.LogInformation("Config: nvram={Nvram} vpreg={VpReg} api={Api} writeBack={WriteBack} ignored={Ignored}",
+            options.NvramPath, options.VpRegPath, options.ApiBaseUrl, options.EnableWriteBack,
+            options.IgnoredTables.Count == 0 ? "(none)" : string.Join(",", options.IgnoredTables));
+    }
 
     public static string LogDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),

@@ -30,5 +30,17 @@ public interface IScoreWriter
     /// </summary>
     int SlotCount(string table, string? category);
 
-    Task<WriteResult> WriteAsync(string table, IReadOnlyList<RemoteScore> board, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Applies the board to the machine's save data.
+    /// </summary>
+    /// <param name="dryRun">
+    /// Compute and report the plan without touching a single byte. This is what
+    /// makes --plan safe to run on a live cabinet, so it must be honoured before
+    /// any file is opened for writing.
+    /// </param>
+    Task<WriteResult> WriteAsync(
+        string table,
+        IReadOnlyList<RemoteScore> board,
+        bool dryRun = false,
+        CancellationToken cancellationToken = default);
 }

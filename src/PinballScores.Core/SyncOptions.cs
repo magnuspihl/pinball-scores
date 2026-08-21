@@ -45,11 +45,17 @@ public sealed class SyncOptions
     public bool DryRun { get; set; }
 
     /// <summary>
-    /// Processes that must not be running before anything is written to a machine.
-    /// A game flushes its own save data on exit and would clobber our write.
+    /// Emulators that must not be running before anything is written to a machine.
+    /// A game holds its save data in memory and flushes it on exit, so writing while
+    /// one is open is simply overwritten.
+    ///
+    /// Matched by prefix, so "VPinballX" also catches "VPinballX64" and
+    /// "VPinballX_GL". List the emulators only — a front end such as PinUp Popper
+    /// runs the whole time the cabinet is on, and listing it would disable
+    /// write-back permanently.
     /// </summary>
     public IList<string> BlockingProcesses { get; set; } =
-        ["VPinballX", "VPinball995", "Pinball FX", "PinballFX", "Future Pinball"];
+        ["VPinballX", "VPinball995", "PinballFX", "Future Pinball", "PinballArcade"];
 
     /// <summary>
     /// Initials used for placeholder scores written to blank a machine. Any score

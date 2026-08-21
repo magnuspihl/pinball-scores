@@ -44,7 +44,7 @@ no desktop at all.
 Submission happens before write-back so a score set since the last run is banked
 before anything overwrites the machine.
 
-*Step 3 is currently stubbed* — see [Write-back](#write-back).
+Step 3 is off by default — see [Write-back](#write-back).
 
 ## Data formats
 
@@ -178,28 +178,69 @@ one — is written there with the offending file and the parse position.
 
 ## Write-back
 
-Not enabled yet: `NvramScoreWriter` and `StgScoreWriter` compute and log the full
-slot plan but do not write bytes. The interface and slot assignment are live so
-the run loop has its final shape.
+Implemented for both formats, and **off by default** — set `EnableWriteBack`.
 
-The hard part is already solved. Each Stern SAM record carries a 2-byte integrity
-tag equal to `0xFFFF - sum(first 28 bytes)`, stored little-endian at
-`record+0x1c`. Writing a record without recomputing it makes the ROM reject the
-record on boot and restore the factory default, which is why earlier attempts
-silently reverted. That tag is the map format's standard `checksum16` over a
-30-byte range, so it is expressed in the bundled maps and can be recomputed
-generically. Verified 22/22 across `smanve_101`, `avs_170` and `xmn_151h`,
-confirming it is a generic Stern SAM routine rather than per-game logic.
+Each Stern SAM record carries a 2-byte integrity tag equal to
+`0xFFFF - sum(first 28 bytes)`, stored little-endian at `record+0x1c`; WPC games
+checksum their own regions. A record written without recomputing these is rejected
+on boot and replaced with the ROM's factory default, which is why earlier attempts
+appeared to work and then reverted. Checksums are recomputed for the whole image
+after the last field is written — and reading and writing share one implementation
+(`NvramChecksum`), so a writer that disagreed with the verifier is not possible.
 
-`research/tools/patch_score.py` is the working reference for both formats (with
-the older `research/patch_nvram_score.py` and `research/patch_stg_score.py` still
-alongside it). The STG path has already been proven on the real cabinet; the
-NVRAM path awaits a hardware test.
+Every write is defended three ways:
+
+- **Verified before it lands.** The updated image is re-read and every non-blank
+  assignment must decode back to what was intended, checksums included. A mismatch
+  means nothing is written.
+- **Atomic.** Written to a temporary file and swapped in, so an interrupted write
+  cannot leave an image the ROM would reject wholesale. `VPReg.stg` matters most
+  here — it is shared by every VPX table.
+- **Refuses rather than truncates.** A value too large for its field, or initials
+  outside the machine's alphabet, fails the write instead of silently storing
+  something wrong that would then be read back as a real score.
+
+`--plan` never writes a byte, which is what makes it safe on a live cabinet.
+
+**Cross-checked against an independent implementation.** Files written by this
+code were verified with `research/tools/nvmap.py`: all checksums valid and all
+values decoded back correctly on `smanve_101`, `twd_156h` (Stern SAM, `int`,
+little-endian), `mm_109c`, `sttng_l7` (WPC 12K) and `taf_l7` (WPC 8K, `bcd`,
+big-endian).
+
+Unlike `research/patch_stg_score.py`, which could only replace a value with one of
+exactly the same byte length, the STG writer resizes streams properly — no
+zero-padding to the previous digit count.
+
+### Tables that refuse to be written
+
+`stwr_107` (Star Wars) is excluded. Its boot code restores the entire table from
+an undocumented shadow copy when rank 1 looks too low, so a write reverts
+everything in a way that looks like the writer failing. Mapping the shadow would
+lift the exclusion.
 
 **Blanking and placeholders.** Every slot is planned on every write, not just the
 ones the API has a score for. A slot the API doesn't fill is blanked, so a score
 the API doesn't know about can never linger on the machine — the cabinet ends up
-showing exactly what the API holds.
+showing exactly what the API holds, including when that is nothing.
+
+This is what makes competitions work. A competition starts from an empty or
+near-empty board, and the machine has to reflect that rather than keeping the
+pre-competition leaderboard underneath. Two API scores on a five-slot table give:
+
+```
+Grand Champion   BBB  9000000
+First Place      AAA  5000000
+Second Place     '   '      1
+Third Place      '   '      1
+Fourth Place     '   '      1
+```
+
+The marker is space-padded to whatever the field width is — three spaces on WPC's
+fixed-width field, a single space plus the terminator on Stern SAM's 11-byte
+null-terminated one. Both match what `research/tools/reset_demo_scores.py` writes,
+which is the form proven on the cabinet. Named categories are blanked
+independently, so a competition on the main board doesn't leave stale champions.
 
 Blanking writes **blank initials with a value of `1`** rather than clearing the
 record: a ROM treats a cleared record as invalid and restores its compiled-in
@@ -222,8 +263,18 @@ still exists in records written before the WPC finding.
 never read: the blanking tool is map-driven, so an unmapped table is outside the
 system entirely.
 
-**Never write while a game is running** — a game flushes its own save data on exit
-and would discard the write. Runs check `BlockingProcesses` first.
+**Never write while a game is running** — a game holds its save data in memory and
+flushes it on exit, so a write landing mid-session is simply overwritten. Runs
+check `BlockingProcesses` first.
+
+List the **emulators**, not the front end. PinUp Popper and similar launchers stay
+running the whole time the cabinet is on, so including one would disable write-back
+permanently. Names are matched by prefix, so `VPinballX` also covers `VPinballX64`
+and `VPinballX_GL` — an exact match that quietly missed would be worse than no
+check at all. Confirm yours with `Get-Process` while a table is open.
+
+Nothing is lost if the check does miss: the emulator's own scores are read and
+submitted on the next run, so the API stays correct and the write is simply retried.
 
 ## Deployment and updates
 
@@ -317,7 +368,7 @@ updates do anything at all.
 ## Development
 
 ```
-dotnet test          # 123 tests, no Windows required
+dotnet test          # 158 tests, no Windows required
 dotnet run --project src/PinballScores.Service -- --once \
   --PinballScores:NvramPath=ScoresData/nvram \
   --PinballScores:VpRegPath=ScoresData/User/VPReg.stg \
