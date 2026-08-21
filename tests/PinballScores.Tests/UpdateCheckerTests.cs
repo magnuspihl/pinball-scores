@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -118,6 +119,58 @@ public class UpdateCheckerTests
 
         Assert.True(options.Enabled);
         Assert.Null(options.RepositoryUrl);
-        Assert.Equal(TimeSpan.FromHours(24), options.CheckInterval);
+        Assert.Equal(TimeSpan.FromHours(1), options.CheckInterval);
+    }
+
+    [Theory]
+    [InlineData("01:00:00", 1, 0)]
+    [InlineData("1:00:00", 1, 0)]
+    [InlineData("00:15:00", 0, 15)]
+    [InlineData("1.00:00:00", 24, 0)]
+    public void IntervalsAreReadAsHoursAndMinutes(string value, int hours, int minutes)
+    {
+        Assert.Equal(TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes), TimeSpan.Parse(value));
+    }
+
+    [Fact]
+    public void TwentyFourColonZeroZeroIsTwentyFourDaysNotOneDay()
+    {
+        // The trap that shipped in appsettings.json: .NET reads a leading component
+        // above 23 as days, so "24:00:00" is 24 days. Silent, and it would have made
+        // the cabinet check roughly monthly.
+        Assert.Equal(TimeSpan.FromDays(24), TimeSpan.Parse("24:00:00"));
+        Assert.NotEqual(TimeSpan.FromHours(24), TimeSpan.Parse("24:00:00"));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(30)]
+    public void AbsurdlyShortIntervalsAreFloored(int seconds)
+    {
+        // Unauthenticated GitHub allows 60 requests an hour per IP, and a run can be
+        // triggered by a file change every few seconds.
+        var options = new AutoUpdateOptions { CheckInterval = TimeSpan.FromSeconds(seconds) };
+
+        Assert.Equal(AutoUpdateOptions.MinimumCheckInterval, options.EffectiveCheckInterval);
+    }
+
+    [Fact]
+    public void ReasonableIntervalsArePassedThrough()
+    {
+        var options = new AutoUpdateOptions { CheckInterval = TimeSpan.FromHours(1) };
+        Assert.Equal(TimeSpan.FromHours(1), options.EffectiveCheckInterval);
+    }
+
+    [Fact]
+    public void ThePackagedSettingsFileParsesToASensibleInterval()
+    {
+        // Guards the shipped default specifically, since a bad value there is
+        // invisible until someone notices updates are not arriving.
+        var builder = ServiceHost.CreateBuilder([]);
+        var options = new AutoUpdateOptions();
+        builder.Configuration.GetSection(AutoUpdateOptions.SectionName).Bind(options);
+
+        Assert.InRange(options.CheckInterval, TimeSpan.FromMinutes(1), TimeSpan.FromDays(1));
     }
 }

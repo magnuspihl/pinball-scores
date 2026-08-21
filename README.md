@@ -24,6 +24,11 @@ runs can never overlap:
 every slot it would write, without POSTing anything or touching a save file. Use
 it to check a cabinet's state before and after clearing it.
 
+Both one-shot modes print to the terminal they were launched from, by attaching
+to the parent console. That cannot create a window — when there is no parent
+console, which is exactly the service case, output stays silent and only the log
+file is written.
+
 Focus stealing is prevented structurally rather than by care: the project is built
 as `WinExe` so no console is ever allocated, and a service runs in session 0 with
 no desktop at all.
@@ -129,6 +134,12 @@ website. A test therefore asserts that any field with a counting suffix is typed
 `%ProgramData%\PinballScores\appsettings.json`, then `PINBALLSCORES_`
 environment variables, then command line.
 
+**Edit the `%ProgramData%` copy, never the packaged one.** The file next to the
+executable is part of the install and is *replaced by every update*, so changes
+there are silently lost the first time the app updates itself. The installer
+creates the `%ProgramData%` copy from the packaged defaults if it does not
+already exist, and never overwrites it.
+
 Nothing sensitive is compiled in.
 
 | Setting | Meaning |
@@ -151,6 +162,19 @@ Nothing sensitive is compiled in.
 
 Logs go to `%ProgramData%\PinballScores\logs`, one file per day, kept 14 days,
 plus the Windows Event Log when running as a service.
+
+### When the service will not start
+
+Windows reports only `Cannot start service PinballScores on computer '.'`, which
+says nothing. Look here:
+
+```
+C:\ProgramData\PinballScores\logs\startup-error.log
+```
+
+Anything that fails before normal logging is available — most often a malformed
+`appsettings.json`, since `optional` covers a *missing* file but not an *invalid*
+one — is written there with the offending file and the parse position.
 
 ## Write-back
 
@@ -214,6 +238,16 @@ The service checks for updates between runs — never during one, so a swap cann
 land mid-write — stages the new version, schedules its own restart, and stops.
 Velopack applies the update while nothing is running, and handles delta
 downloads, atomic swap and rollback.
+
+A check is two small HTTPS requests and costs nothing when there is no new
+version, so `Updates:CheckInterval` can be short; it defaults to an hour and is
+floored at a minute. The only real constraint is GitHub's unauthenticated rate
+limit of 60 requests an hour per IP.
+
+**Mind the TimeSpan format.** .NET reads a leading component above 23 as *days*,
+so `"24:00:00"` is twenty-four **days**, not one — silently, and the only symptom
+is updates never arriving. Write an hour as `"01:00:00"` and a day as
+`"1.00:00:00"`.
 
 The restart is **deliberately not** left to Windows Service Manager recovery
 actions. Recovery only fires when a service terminates without reporting
@@ -283,7 +317,7 @@ updates do anything at all.
 ## Development
 
 ```
-dotnet test          # 104 tests, no Windows required
+dotnet test          # 123 tests, no Windows required
 dotnet run --project src/PinballScores.Service -- --once \
   --PinballScores:NvramPath=ScoresData/nvram \
   --PinballScores:VpRegPath=ScoresData/User/VPReg.stg \

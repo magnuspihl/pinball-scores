@@ -23,7 +23,26 @@ public sealed class AutoUpdateOptions
     /// <summary>Token for a private repository. Leave empty when the repo is public.</summary>
     public string? AccessToken { get; set; }
 
-    public TimeSpan CheckInterval { get; set; } = TimeSpan.FromHours(24);
+    /// <summary>
+    /// How often to look for a new release. The check is two small HTTPS requests,
+    /// so this can be short; an hour is plenty.
+    ///
+    /// Careful writing this in JSON: .NET reads a leading component above 23 as
+    /// *days*, so "24:00:00" is twenty-four days, not one. Use "1.00:00:00" for a
+    /// day, or just "01:00:00" for an hour.
+    /// </summary>
+    public TimeSpan CheckInterval { get; set; } = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// Floor applied to <see cref="CheckInterval"/>. Runs can be triggered by a file
+    /// change every few seconds, and unauthenticated GitHub API access is limited to
+    /// 60 requests an hour per IP, so a mistyped interval must not turn into a poll.
+    /// </summary>
+    public static readonly TimeSpan MinimumCheckInterval = TimeSpan.FromMinutes(1);
+
+    /// <summary>The interval actually used, with the floor applied.</summary>
+    public TimeSpan EffectiveCheckInterval =>
+        CheckInterval < MinimumCheckInterval ? MinimumCheckInterval : CheckInterval;
 
     /// <summary>Accept pre-release builds. Useful for testing an update on the cabinet.</summary>
     public bool AllowPrerelease { get; set; }
@@ -82,7 +101,7 @@ public sealed class UpdateChecker
         if (string.IsNullOrWhiteSpace(_options.RepositoryUrl)) return;
         if (_time.GetUtcNow() < _nextCheck) return;
 
-        _nextCheck = _time.GetUtcNow() + _options.CheckInterval;
+        _nextCheck = _time.GetUtcNow() + _options.EffectiveCheckInterval;
 
         try
         {

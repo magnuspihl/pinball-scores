@@ -84,9 +84,24 @@ public sealed class ScoreSyncRunner
                 if (result.Skipped is not null)
                 {
                     skipped++;
-                    // Expected for unmapped ROMs and placeholder files, so not a warning.
-                    _log.LogInformation("Skipped {Table} via {Source}: {Reason}",
-                        result.Table, source.Name, result.Skipped);
+
+                    if (result.SkipIsRoutine)
+                    {
+                        // A VPinMAME nvram folder can hold dozens of ROMs this cabinet
+                        // does not use. Reporting each one every run would bury the
+                        // skips that actually mean something; the count still appears
+                        // in the run summary.
+                        _log.LogDebug("Skipped {Table} via {Source}: {Reason}",
+                            result.Table, source.Name, result.Skipped);
+                    }
+                    else
+                    {
+                        // A table we do expect to read is not being read — its scores
+                        // are being lost until someone looks.
+                        _log.LogWarning("Skipped {Table} via {Source}: {Reason}",
+                            result.Table, source.Name, result.Skipped);
+                    }
+
                     continue;
                 }
 

@@ -65,7 +65,7 @@ public sealed class StgScoreSource : IScoreSource
             {
                 if (!present.Contains(map.Storage))
                 {
-                    yield return ExtractionResult.Skip(map.Storage, "table not present in VPReg.stg");
+                    yield return ExtractionResult.NotOurs(map.Storage, "table not present in VPReg.stg");
                     continue;
                 }
 

@@ -187,6 +187,27 @@ public class NvramReaderTests
         var placeholder = Assert.Single(results, r => r.Table == "spagb_100");
         Assert.NotNull(placeholder.Skipped);
         Assert.Empty(placeholder.Scores);
+
+        // Routine: an nvram folder full of unused ROMs must not fill the log.
+        Assert.True(placeholder.SkipIsRoutine);
+    }
+
+    [Fact]
+    public void AMapThatFailsItsChecksumsIsANotableSkipNotARoutineOne()
+    {
+        // This one means a table we expect to read is silently losing its scores,
+        // so it has to stand out from the dozens of "not one of ours" skips.
+        var corrupt = Path.Combine(Directory.CreateTempSubdirectory("badnv-").FullName, "smanve_101.nv");
+        var data = TestData.Nvram("smanve_101");
+        data[0x2b80] ^= 0xFF;
+        File.WriteAllBytes(corrupt, data);
+
+        var result = Assert.Single(
+            new NvramScoreSource(Path.GetDirectoryName(corrupt)!, TestData.Catalog).Extract());
+
+        Assert.NotNull(result.Skipped);
+        Assert.False(result.SkipIsRoutine);
+        Assert.Contains("does not match", result.Skipped);
     }
 
     [Fact]

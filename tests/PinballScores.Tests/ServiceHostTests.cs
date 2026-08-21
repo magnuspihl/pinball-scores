@@ -69,6 +69,72 @@ public class ServiceHostTests
     }
 
     [Fact]
+    public void AStartupFailureIsWrittenSomewhereFindable()
+    {
+        // Without this a bad config is completely silent: no console (WinExe), and
+        // configuration loads before the file logger exists, so Windows reports only
+        // "cannot start service on computer '.'".
+        ServiceHost.WriteStartupError(new InvalidDataException("boom: bad appsettings"));
+
+        var candidates = new[]
+        {
+            Path.Combine(ServiceHost.LogDirectory, "startup-error.log"),
+            Path.Combine(Path.GetTempPath(), "PinballScores", "startup-error.log"),
+        };
+
+        var written = candidates.FirstOrDefault(File.Exists);
+        Assert.NotNull(written);
+
+        var text = File.ReadAllText(written);
+        Assert.Contains("boom: bad appsettings", text);
+        // Must say which files were in play, since that is the usual cause.
+        Assert.Contains(ServiceHost.MachineSettingsPath, text);
+    }
+
+    [Fact]
+    public void AMalformedOptionalSettingsFileIsNotSilentlyIgnored()
+    {
+        // "optional" means "may be missing", not "may be invalid" — a stray comma in
+        // a hand-edited config throws, which is why the crash log above exists.
+        var path = Path.Combine(Directory.CreateTempSubdirectory("badcfg-").FullName, "appsettings.json");
+        File.WriteAllText(path, "{ \"PinballScores\": { \"Source\": \"x\",, } }");
+
+        Assert.Throws<InvalidDataException>(() =>
+            new ConfigurationBuilder()
+                .AddJsonFile(path, optional: true, reloadOnChange: false)
+                .Build());
+    }
+
+    [Fact]
+    public void AttachingToATerminalNeverCreatesOne()
+    {
+        // The whole reason the app is a WinExe is that a service must not be able to
+        // put a window on the cabinet's screen. Attaching to a *parent* console is
+        // safe because it cannot create one; when there is no parent — the service
+        // case — it must simply report failure and stay silent.
+        //
+        // It must report failure rather than throwing, because the caller decides
+        // whether to add a console logger based on the return value — an exception
+        // here would take the service down at startup.
+        var failure = Record.Exception(() => ConsoleOutput.TryAttachToParentTerminal());
+
+        Assert.Null(failure);
+    }
+
+    [Fact]
+    public void PackagedSettingsMayCarryCommentsForWarnings()
+    {
+        // The packaged file warns that it is replaced on update; that warning is a
+        // // comment, so the reader has to tolerate them.
+        var path = Path.Combine(Directory.CreateTempSubdirectory("cmtcfg-").FullName, "appsettings.json");
+        File.WriteAllText(path, "{\n  // do not edit\n  \"PinballScores\": { \"Source\": \"ok\" }\n}");
+
+        var cfg = new ConfigurationBuilder().AddJsonFile(path).Build();
+
+        Assert.Equal("ok", cfg["PinballScores:Source"]);
+    }
+
+    [Fact]
     public void CommandLineStillOverridesTheFile()
     {
         var builder = ServiceHost.CreateBuilder(["--PinballScores:Source=override-test"]);
