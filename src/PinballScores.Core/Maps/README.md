@@ -6,15 +6,21 @@ self-contained artifact. They are not the place to author a map.
 | What | Canonical source |
 | --- | --- |
 | `*.map.json` | `research/nvram-maps/` in this repo |
+| `stg/*.map.json` | `research/stg-maps/` in this repo |
 | `platforms/*.json` | [tomlogic/pinball-memory-maps](https://github.com/tomlogic/pinball-memory-maps) |
 
 To add or change a table, follow `research/ADDING-A-TABLE.md`, which writes to
-`research/nvram-maps/`, then re-sync:
+`research/nvram-maps/` or `research/stg-maps/`, then re-sync:
 
 ```sh
 cp research/nvram-maps/*.map.json src/PinballScores.Core/Maps/
+cp research/stg-maps/*.map.json  src/PinballScores.Core/Maps/stg/
 dotnet test
 ```
+
+**A table with no map here is invisible to the app** — not read, not written.
+That is deliberate: it keeps the app's idea of the cabinet identical to the
+blanking tool's, so a table cannot be reset but not read, or read but not reset.
 
 The tests decode the committed samples in `ScoresData/nvram/` and verify every
 map's checksum regions, so a bad or mismatched copy fails the build rather than

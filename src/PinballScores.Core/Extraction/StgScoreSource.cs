@@ -12,15 +12,22 @@ namespace PinballScores.Core.Extraction;
 ///
 /// Uses the managed OpenMcdf reader rather than ole32 P/Invoke, which keeps the
 /// format logic portable and unit-testable instead of Windows-only.
+///
+/// Only tables with a bundled map are read. VPReg.stg is shared and accumulates
+/// storages for tables that are not part of the cabinet's tracked set; those are
+/// not reset when the cabinet is blanked, so discovering them by convention would
+/// feed stale scores back into a freshly wiped database.
 /// </summary>
 public sealed class StgScoreSource : IScoreSource
 {
-    private const string ScorePrefix = "HighScore";
-    private const string NameSuffix = "Name";
-
     private readonly string _path;
+    private readonly MapCatalog _catalog;
 
-    public StgScoreSource(string path) => _path = path;
+    public StgScoreSource(string path, MapCatalog catalog)
+    {
+        _path = path;
+        _catalog = catalog;
+    }
 
     public string Name => "vpx";
 
@@ -49,18 +56,27 @@ public sealed class StgScoreSource : IScoreSource
 
         using (root)
         {
-            foreach (var entry in root.EnumerateEntries())
+            var present = root.EnumerateEntries()
+                .Where(e => e.Type == EntryType.Storage)
+                .Select(e => e.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var map in _catalog.StgMaps.OrderBy(m => m.Storage, StringComparer.Ordinal))
             {
-                if (entry.Type != EntryType.Storage) continue;
+                if (!present.Contains(map.Storage))
+                {
+                    yield return ExtractionResult.Skip(map.Storage, "table not present in VPReg.stg");
+                    continue;
+                }
 
                 ExtractionResult result;
                 try
                 {
-                    result = ReadTable(root, entry.Name);
+                    result = ReadTable(root, map);
                 }
                 catch (Exception ex) when (ex is IOException or FormatException or KeyNotFoundException)
                 {
-                    result = ExtractionResult.Skip(entry.Name, $"unreadable table storage: {ex.Message}");
+                    result = ExtractionResult.Skip(map.Storage, $"unreadable table storage: {ex.Message}");
                 }
 
                 yield return result;
@@ -68,46 +84,39 @@ public sealed class StgScoreSource : IScoreSource
         }
     }
 
-    private static ExtractionResult ReadTable(RootStorage root, string table)
+    private static ExtractionResult ReadTable(RootStorage root, StgMap map)
     {
-        var storage = root.OpenStorage(table);
-        var variables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var entry in storage.EnumerateEntries())
-        {
-            if (entry.Type != EntryType.Stream) continue;
-            variables[entry.Name] = ReadString(storage, entry.Name);
-        }
+        var storage = root.OpenStorage(map.Storage);
+        var streams = storage.EnumerateEntries()
+            .Where(e => e.Type == EntryType.Stream)
+            .Select(e => e.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var scores = new List<ScoreEntry>();
-        foreach (var (key, raw) in variables)
-        {
-            if (!key.StartsWith(ScorePrefix, StringComparison.OrdinalIgnoreCase)) continue;
-            if (key.EndsWith(NameSuffix, StringComparison.OrdinalIgnoreCase)) continue;
 
-            // Skips Credits, ReplayValue, TotalGamesPlayed and friends by construction,
-            // and any HighScore* variable that doesn't hold a number.
+        foreach (var slot in map.Slots)
+        {
+            if (!streams.Contains(slot.ValueStream)) continue;
+
+            var raw = ReadString(storage, slot.ValueStream);
             if (!long.TryParse(raw.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
                 continue;
 
-            var player = variables.GetValueOrDefault(key + NameSuffix, "").Trim();
+            var player = slot.InitialsStream is not null && streams.Contains(slot.InitialsStream)
+                ? ReadString(storage, slot.InitialsStream).Trim()
+                : "";
             if (CategoryRules.IsUnusedSlot(player)) continue;
 
-            scores.Add(new ScoreEntry(table, CategoryFor(key), player, value));
+            var category = map.CategoryForSlot(slot.Label);
+            scores.Add(new ScoreEntry(
+                map.Storage,
+                category is not null ? category.ApiCategory : CategoryRules.Slugify(slot.Label),
+                player,
+                value,
+                category?.ValueKind ?? ScoreValueKind.Score));
         }
 
-        return new ExtractionResult(table, scores);
-    }
-
-    /// <summary>
-    /// "HighScore1".."HighScore8" are the ranked main board, so they carry no category.
-    /// A non-numeric suffix ("HighScoreCombo", "HighScoreXandar") names a separate board.
-    /// </summary>
-    private static string? CategoryFor(string key)
-    {
-        var suffix = key[ScorePrefix.Length..].Trim();
-        if (suffix.Length == 0 || suffix.All(char.IsDigit)) return null;
-        return CategoryRules.Normalise(suffix);
+        return new ExtractionResult(map.Storage, scores);
     }
 
     private static string ReadString(Storage storage, string name)

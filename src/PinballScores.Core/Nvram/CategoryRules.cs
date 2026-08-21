@@ -3,43 +3,42 @@ using System.Text.RegularExpressions;
 namespace PinballScores.Core.Nvram;
 
 /// <summary>
-/// Turns a machine's own slot labels into the API's category model.
+/// Helpers for turning a machine's slots into the API's category model.
 ///
-/// The machine stores only (initials, value) per record — the checksum covers the
-/// record's bytes and not its address, so a record is byte-identical whichever slot
-/// it occupies, and the game freely re-sorts records between slots. "Grand Champion"
-/// and "First Place" are therefore positional names for rank, not separate boards.
-/// Rank is derived from value order; only genuinely distinct achievements keep a name.
+/// Category identity itself comes from the map's <c>_pinballscores.categories</c>
+/// block, not from parsing labels — see <see cref="CategoryDefinition"/>. What
+/// remains here is the fallback slug for a slot no map places, and the rule for
+/// recognising an unoccupied slot.
 ///
-/// This lives in the extractor rather than the server because it needs
-/// source-format knowledge the API shouldn't have to carry.
+/// The underlying reason a machine's slot labels are not categories: the machine
+/// stores only (initials, value) per record. The checksum covers the record's bytes
+/// and not its address, so a record is byte-identical whichever slot it occupies,
+/// and the game freely re-sorts records between slots. "Grand Champion" and "First
+/// Place" are positional names for rank, not separate boards.
 /// </summary>
 public static partial class CategoryRules
 {
-    /// <summary>Trailing rank markers: "#1", " 1", "1st", "No. 2".</summary>
-    [GeneratedRegex(@"\s*(?:#|No\.?\s*)?\d+(?:st|nd|rd|th)?\s*$", RegexOptions.IgnoreCase)]
-    private static partial Regex TrailingIndex();
-
-    [GeneratedRegex(@"\s+")]
-    private static partial Regex Whitespace();
+    [GeneratedRegex(@"[^a-z0-9]+")]
+    private static partial Regex NonSlug();
 
     /// <summary>
-    /// Collapses a ranked set into one category name. "Gauntlet Champ 1/2/3" become
-    /// "GAUNTLET CHAMP" with rank derived from the score, matching how the main board
-    /// is handled one level up.
+    /// Fallback category key for a slot the map does not place, in the same
+    /// snake_case shape the maps use so it cannot be told apart downstream.
     /// </summary>
-    public static string Normalise(string label)
+    public static string Slugify(string label)
     {
-        var trimmed = Whitespace().Replace(label.Trim(), " ");
-        var withoutIndex = TrailingIndex().Replace(trimmed, "").Trim();
-        // Don't let a label that is *only* a number collapse to nothing.
-        var result = withoutIndex.Length > 0 ? withoutIndex : trimmed;
-        return result.ToUpperInvariant();
+        var slug = NonSlug().Replace(label.Trim().ToLowerInvariant(), "_").Trim('_');
+        return slug.Length > 0 ? slug : "unknown";
     }
 
     /// <summary>
     /// Initials that mean "nobody holds this slot". WPC leaves blanks, Stern SAM
     /// leaves 0xFF padding which decodes to empty, Gottlieb leaves nulls.
+    ///
+    /// Also covers the blanking marker written when a machine is reset. That marker
+    /// is a space, so the whitespace check does the work; the punctuation check is
+    /// kept because the marker used to be "---", which still survives in records
+    /// written before WPC was found to reject dashes.
     /// </summary>
     public static bool IsUnusedSlot(string? initials)
     {

@@ -55,15 +55,29 @@ public sealed class SyncOptions
     /// Initials used for placeholder scores written to blank a machine. Any score
     /// held by these is ignored on extraction, so blanking a board to "beat me
     /// immediately" values never repopulates the API with its own filler.
+    ///
+    /// The marker itself is blank, which is already treated as an unused slot, so
+    /// this list only needs entries for historical markers. "---" was the marker
+    /// until Williams WPC was found to reject dashes.
     /// </summary>
     public IList<string> PlaceholderInitials { get; set; } = ["---"];
 
+    /// <summary>Marker initials written when blanking a slot. A space; see <see cref="Insertion.Placeholder"/>.</summary>
+    public string PlaceholderMarker { get; set; } = " ";
+
     /// <summary>
-    /// Value written alongside <see cref="PlaceholderInitials"/>. Low enough that
-    /// any real play beats it immediately, but non-zero: a cleared record reads as
+    /// Value written alongside <see cref="PlaceholderMarker"/>. Low enough that any
+    /// real play beats it immediately, but non-zero: a cleared record reads as
     /// invalid and the ROM restores its factory default in place of it.
     /// </summary>
     public long PlaceholderValue { get; set; } = 1;
+
+    /// <summary>
+    /// Tables to leave alone entirely. Visual Pinball's VPReg.stg is shared, so it
+    /// can hold storages for tables that are not part of the cabinet's tracked set
+    /// and are neither reset nor wanted on the leaderboard.
+    /// </summary>
+    public IList<string> IgnoredTables { get; set; } = [];
 
     public IEnumerable<string> Validate()
     {

@@ -45,11 +45,11 @@ public class SlotPlannerTests
     public void NamedCategoriesAreAssignedToTheirOwnSlots()
     {
         var map = TestData.Catalog.Find("smanve_101")!;
-        var board = new[] { Score("SPIDER CHAMPION", "ZZZ", 42) };
+        var board = new[] { Score("spider_champion", "ZZZ", 42) };
 
         var plan = SlotPlanner.Plan(map, board).ToList();
 
-        var spider = Assert.Single(plan, a => a.Category == "SPIDER CHAMPION");
+        var spider = Assert.Single(plan, a => a.Category == "spider_champion");
         Assert.Equal("ZZZ", spider.Initials);
         Assert.Equal(42, spider.Value);
     }

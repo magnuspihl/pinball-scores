@@ -100,16 +100,12 @@ public sealed class NvramReader
     /// <summary>Reads every populated slot on the machine, already categorised.</summary>
     public IEnumerable<ScoreEntry> ReadScores(string tableId)
     {
-        foreach (var slot in _map.HighScores)
-            if (Read(tableId, slot, category: null) is { } entry)
-                yield return entry;
-
-        foreach (var slot in _map.ModeChampions)
-            if (Read(tableId, slot, category: CategoryRules.Normalise(slot.Label)) is { } entry)
+        foreach (var slot in _map.HighScores.Concat(_map.ModeChampions))
+            if (Read(tableId, slot) is { } entry)
                 yield return entry;
     }
 
-    private ScoreEntry? Read(string tableId, ScoreSlot slot, string? category)
+    private ScoreEntry? Read(string tableId, ScoreSlot slot)
     {
         var initials = slot.Initials is null ? null : ReadChars(slot.Initials);
         if (string.IsNullOrWhiteSpace(initials)) return null;
@@ -126,7 +122,14 @@ public sealed class NvramReader
             kind = KindOf(slot.ValueKey, descriptor);
         }
 
-        return new ScoreEntry(tableId, category, initials.Trim(), value, kind, Clean(slot.Value?.Suffix));
+        // The map's own rollup decides the category and how the value reads. Falling
+        // back to a slug keeps a slot the map forgot to place from vanishing; a test
+        // asserts every bundled map places all of its slots.
+        var category = _map.CategoryForSlot(slot.Label);
+        var apiCategory = category is not null ? category.ApiCategory : CategoryRules.Slugify(slot.Label);
+        if (category is not null) kind = category.ValueKind;
+
+        return new ScoreEntry(tableId, apiCategory, initials.Trim(), value, kind, Clean(slot.Value?.Suffix));
     }
 
     private static string? Clean(string? suffix) =>

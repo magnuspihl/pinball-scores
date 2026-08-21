@@ -73,6 +73,14 @@ public sealed class ScoreSyncRunner
         {
             foreach (var result in source.Extract())
             {
+                if (_options.IgnoredTables.Contains(result.Table, StringComparer.OrdinalIgnoreCase))
+                {
+                    skipped++;
+                    _log.LogInformation("Ignored {Table} via {Source}: excluded by configuration",
+                        result.Table, source.Name);
+                    continue;
+                }
+
                 if (result.Skipped is not null)
                 {
                     skipped++;
@@ -206,11 +214,7 @@ public sealed class ScoreSyncRunner
         var sources = new List<IScoreSource>();
         var writers = new List<IScoreWriter>();
 
-        // The first configured marker is what gets written when blanking a slot;
-        // every marker in the list is ignored on the way back in.
-        var placeholder = new Placeholder(
-            options.PlaceholderInitials.FirstOrDefault() ?? Placeholder.Default.Initials,
-            options.PlaceholderValue);
+        var placeholder = new Placeholder(options.PlaceholderMarker, options.PlaceholderValue);
 
         if (!string.IsNullOrWhiteSpace(options.NvramPath))
         {
@@ -220,11 +224,10 @@ public sealed class ScoreSyncRunner
 
         if (!string.IsNullOrWhiteSpace(options.VpRegPath))
         {
-            var stg = new StgScoreSource(options.VpRegPath);
-            sources.Add(stg);
+            sources.Add(new StgScoreSource(options.VpRegPath, catalog));
             writers.Add(new StgScoreWriter(
                 options.VpRegPath,
-                stg.Extract().Select(r => r.Table).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                catalog.StgMaps.Select(m => m.Storage).ToHashSet(StringComparer.OrdinalIgnoreCase),
                 placeholder));
         }
 

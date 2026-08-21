@@ -15,6 +15,19 @@ namespace PinballScores.Core.Insertion;
 /// bundled maps, so a real implementation can recompute it generically rather than
 /// per game. research/patch_nvram_score.py is the working reference.
 ///
+/// Two platform quirks a real implementation must handle, both found by
+/// live-cabinet testing (see research/rom-analysis/ and reset_demo_scores.py):
+///
+/// - <b>Williams WPC rejects initials outside its own selectable alphabet.</b>
+///   A "-" is not in it, and a record containing one is silently reverted to the
+///   factory default on boot. A space is fine, which is why the blanking marker
+///   is blank rather than "---".
+/// - <b>Star Wars (stwr_107) keeps an undocumented shadow copy</b> of the top
+///   slot's score. Its boot code compares the live table's rank-1 leading BCD
+///   digit against the shadow's and, if the live value is lower, overwrites the
+///   *entire* live table from the shadow. Writing anything low — such as a
+///   blanking marker — reverts the whole table unless the shadow is mirrored too.
+///
 /// Not enabled until it has been proven against the physical cabinet.
 /// </summary>
 public sealed class NvramScoreWriter : IScoreWriter
@@ -37,8 +50,11 @@ public sealed class NvramScoreWriter : IScoreWriter
         var map = _catalog.Find(table);
         if (map is null) return 0;
 
-        if (category is null) return map.HighScores.Count;
-        return map.ModeChampions.Count(s => CategoryRules.Normalise(s.Label) == category);
+        var definition = category is null
+            ? map.Categories.FirstOrDefault(c => c.IsMainBoard)
+            : map.Categories.FirstOrDefault(c => string.Equals(c.Key, category, StringComparison.OrdinalIgnoreCase));
+
+        return definition?.Slots.Count ?? 0;
     }
 
     public Task<WriteResult> WriteAsync(

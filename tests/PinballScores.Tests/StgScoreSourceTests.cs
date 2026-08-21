@@ -1,4 +1,5 @@
 using PinballScores.Core.Extraction;
+using PinballScores.Core.Models;
 using Xunit;
 
 namespace PinballScores.Tests;
@@ -6,14 +7,27 @@ namespace PinballScores.Tests;
 public class StgScoreSourceTests
 {
     private static List<ExtractionResult> Read() =>
-        new StgScoreSource(TestData.VpRegPath).Extract().ToList();
+        new StgScoreSource(TestData.VpRegPath, TestData.Catalog).Extract().ToList();
 
     [Fact]
-    public void ReadsEveryTableStorageFromTheRealFile()
+    public void ReadsTheMappedTables()
     {
         var results = Read();
-        Assert.Contains(results, r => r.Table == "gotg_2020");
-        Assert.Contains(results, r => r.Table == "leprechaun");
+
+        foreach (var table in new[] { "gotg_2020", "jpsdeadpool", "gameofthrones" })
+            Assert.Contains(results, r => r.Table == table && r.Skipped is null);
+    }
+
+    [Fact]
+    public void UnmappedStoragesAreNotTouched()
+    {
+        // VPReg.stg is shared and accumulates tables the cabinet does not track.
+        // They are not reset when the cabinet is blanked, so reading them would feed
+        // stale scores into a freshly wiped database.
+        var results = Read();
+
+        Assert.DoesNotContain(results, r => r.Table == "leprechaun");
+        Assert.DoesNotContain(results, r => r.Table == "TAF_VPX_V2");
     }
 
     [Fact]
@@ -28,16 +42,28 @@ public class StgScoreSourceTests
     }
 
     [Fact]
-    public void NamedHighScoreVariablesBecomeTheirOwnCategory()
+    public void ChampionFieldsUseTheMapsCategoryKeys()
     {
         var gotg = Read().Single(r => r.Table == "gotg_2020");
 
-        var combo = Assert.Single(gotg.Scores, s => s.Category == "COMBO");
+        var combo = Assert.Single(gotg.Scores, s => s.Category == "combo");
         Assert.Equal("VPW", combo.Player);
         Assert.Equal(15, combo.Value);
 
-        Assert.Contains(gotg.Scores, s => s.Category == "XANDAR");
-        Assert.Contains(gotg.Scores, s => s.Category == "IMMO");
+        Assert.Contains(gotg.Scores, s => s.Category == "xandar");
+        Assert.Contains(gotg.Scores, s => s.Category == "immo");
+        Assert.Contains(gotg.Scores, s => s.Category == "cb");
+    }
+
+    [Fact]
+    public void ComboCountIsACounterWhileTheOthersAreScores()
+    {
+        // A combo tally of 15 sitting beside three 25,000,000 point totals is a
+        // count, not a score — and Spider-Man's combo_champion is typed the same way.
+        var gotg = Read().Single(r => r.Table == "gotg_2020");
+
+        Assert.Equal(ScoreValueKind.Counter, gotg.Scores.Single(s => s.Category == "combo").ValueKind);
+        Assert.Equal(ScoreValueKind.Score, gotg.Scores.Single(s => s.Category == "cb").ValueKind);
     }
 
     [Fact]
@@ -45,25 +71,15 @@ public class StgScoreSourceTests
     {
         var gotg = Read().Single(r => r.Table == "gotg_2020");
 
-        // Credits, ReplayValue and TotalGamesPlayed are not leaderboard entries.
-        Assert.DoesNotContain(gotg.Scores, s => s.Value == 15 && s.Category is null);
-        Assert.DoesNotContain(gotg.Scores, s => s.Category is "CREDITS" or "REPLAYVALUE" or "TOTALGAMESPLAYED");
-    }
-
-    [Fact]
-    public void TableWithNoScoresYieldsNoEntriesRatherThanFailing()
-    {
-        var results = Read();
-        var empty = results.SingleOrDefault(r => r.Table == "TAF_VPX_V2");
-
-        Assert.NotNull(empty);
-        Assert.Empty(empty.Scores);
+        // Credits, ReplayValue and TotalGamesPlayed are not declared in the map, so
+        // they cannot be mistaken for scores.
+        Assert.DoesNotContain(gotg.Scores, s => s.Category is "credits" or "replayvalue" or "totalgamesplayed");
     }
 
     [Fact]
     public void MissingFileIsNotAnError()
     {
-        var results = new StgScoreSource("/nonexistent/VPReg.stg").Extract().ToList();
+        var results = new StgScoreSource("/nonexistent/VPReg.stg", TestData.Catalog).Extract().ToList();
         Assert.Empty(results);
     }
 
