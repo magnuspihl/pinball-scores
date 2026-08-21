@@ -36,7 +36,7 @@ public class NvramReaderTests
     {
         var scores = TestData.ReaderFor("smanve_101").ReadScores("smanve_101").ToList();
 
-        var spider = Assert.Single(scores, s => s.Category == "SPIDER CHAMPION");
+        var spider = Assert.Single(scores, s => s.Category == "spider_champion");
         Assert.Equal("DGH", spider.Player);
         Assert.Equal(25, spider.Value);
     }
@@ -106,15 +106,64 @@ public class NvramReaderTests
     }
 
     [Fact]
-    public void CountersAreTypedSeparatelyFromScores()
+    public void DisplaySuffixIsCarriedThrough()
     {
-        // "6 Castles Destroyed" is a count of things, not a points total. The map
-        // carries that as structured metadata, so no per-table string hacks.
+        // So the site can render "6 Castles Destroyed" rather than a bare 6.
         var castle = TestData.ReaderFor("mm_109c").ReadScores("mm_109c")
-            .Single(s => s.Category == "CASTLE CHAMPION");
+            .Single(s => s.Category == "castle_champion");
 
-        Assert.Equal(ScoreValueKind.Counter, castle.ValueKind);
         Assert.Equal("Castles Destroyed", castle.DisplaySuffix);
+        Assert.Equal(6, castle.Value);
+    }
+
+    [Fact]
+    public void ValueTypeFollowsTheMapRatherThanBeingGuessed()
+    {
+        // The map's category block is authoritative — the CLI never infers a type of
+        // its own, because that is how the CLI and the maps drift apart.
+        var mm = TestData.ReaderFor("mm_109c").ReadScores("mm_109c").ToList();
+        Assert.Equal(ScoreValueKind.Counter, mm.First(s => s.Category == "king_of_the_realm").ValueKind);
+
+        var spider = TestData.ReaderFor("smanve_101").ReadScores("smanve_101")
+            .Single(s => s.Category == "spider_champion");
+        Assert.Equal(ScoreValueKind.Counter, spider.ValueKind);
+    }
+
+    [Theory]
+    [InlineData("castle_champion", "Castles Destroyed")]
+    [InlineData("joust_champion", "Joust Victories")]
+    [InlineData("catapult_champion", "Catapult Slams")]
+    [InlineData("peasant_champion", "Peasant Revolts")]
+    [InlineData("damsel_champion", "Damsels Saved")]
+    [InlineData("troll_champion", "Trolls Destroyed")]
+    public void MedievalMadnessTalliesAreCountersNotScores(string category, string suffix)
+    {
+        // These count things — the suffix says so — and were declared as score until
+        // the maps were corrected. A tally of 6 is not a six-point score.
+        var entry = TestData.ReaderFor("mm_109c").ReadScores("mm_109c").Single(s => s.Category == category);
+
+        Assert.Equal(ScoreValueKind.Counter, entry.ValueKind);
+        Assert.Equal(suffix, entry.DisplaySuffix);
+    }
+
+    [Fact]
+    public void EveryCategoryWithACountingSuffixIsTypedAsACounter()
+    {
+        // Guards the whole set rather than the six known cases, so a future map that
+        // declares a "things destroyed" field as a score fails here.
+        foreach (var rom in TestData.Catalog.KnownRoms)
+        {
+            var map = TestData.Catalog.Find(rom)!;
+            foreach (var slot in map.HighScores.Concat(map.ModeChampions))
+            {
+                if (string.IsNullOrWhiteSpace(slot.Value?.Suffix)) continue;
+                var category = map.CategoryForSlot(slot.Label);
+                if (category is null) continue;
+
+                Assert.True(category.ValueKind is ScoreValueKind.Counter,
+                    $"{rom}: '{slot.Label}' has suffix '{slot.Value!.Suffix}' but is typed {category.ValueKind}");
+            }
+        }
     }
 
     [Fact]
@@ -123,7 +172,7 @@ public class NvramReaderTests
         // Officer's Club #1..#4 is one board with four slots, matching the agreed
         // treatment of Gauntlet Champ 1/2/3.
         var officers = TestData.ReaderFor("sttng_l7").ReadScores("sttng_l7")
-            .Where(s => s.Category == "OFFICER'S CLUB")
+            .Where(s => s.Category == "officer_s_club")
             .ToList();
 
         Assert.Equal(4, officers.Count);
@@ -164,11 +213,11 @@ public class NvramReaderTests
         Assert.Equal(("MHP", 100_609_520L), (board[1].Player, board[1].Value));
         Assert.Equal(("KHP", 81_263_930L), (board[2].Player, board[2].Value));
 
-        var pirateKing = Assert.Single(scores, s => s.Category == "PIRATE KING");
+        var pirateKing = Assert.Single(scores, s => s.Category == "pirate_king");
         Assert.Equal(("KEF", 25L), (pirateKing.Player, pirateKing.Value));
 
         // Gauntlet Champ 1/2/3 collapse to one category, ranked by value.
-        var gauntlet = scores.Where(s => s.Category == "GAUNTLET CHAMP").ToList();
+        var gauntlet = scores.Where(s => s.Category == "gauntlet_champ").ToList();
         Assert.Equal(3, gauntlet.Count);
         Assert.Equal([15L, 10L, 5L], gauntlet.Select(s => s.Value));
     }
@@ -185,10 +234,10 @@ public class NvramReaderTests
 
         foreach (var (category, player, value) in new[]
                  {
-                     ("WALKERS KILLED CHAMPION", "DAV", 25L),
-                     ("COMBO CHAMPION", "MAR", 2_500_000L),
-                     ("LAST MAN STANDING CHAMPION", "EB", 75_000_000L),
-                     ("HORDE CHAMPION", "L E", 50_000_000L),
+                     ("walkers_killed_champion", "DAV", 25L),
+                     ("combo_champion", "MAR", 2_500_000L),
+                     ("last_man_standing_champion", "EB", 75_000_000L),
+                     ("horde_champion", "L E", 50_000_000L),
                  })
         {
             var entry = Assert.Single(scores, s => s.Category == category);
@@ -205,11 +254,11 @@ public class NvramReaderTests
     }
 
     [Theory]
-    [InlineData("potc_600as", "PIRATE KING", "KEF", 25L)]
-    [InlineData("potc_600as", "GAUNTLET CHAMP", "J B", 15L)]
-    [InlineData("potc_600as", "DAVY JONES CHAMPION", "XAQ", 5L)]
-    [InlineData("twd_156h", "WALKERS KILLED CHAMPION", "DAV", 25L)]
-    [InlineData("xmn_151h", "COMBO CHAMPION", "YAN", 15L)]
+    [InlineData("potc_600as", "pirate_king", "KEF", 25L)]
+    [InlineData("potc_600as", "gauntlet_champ", "J B", 15L)]
+    [InlineData("potc_600as", "davy_jones_champion", "XAQ", 5L)]
+    [InlineData("twd_156h", "walkers_killed_champion", "DAV", 25L)]
+    [InlineData("xmn_151h", "combo_champion", "YAN", 15L)]
     public void AchievementTalliesAreTypedAsCountersNotScores(string rom, string category, string player, long value)
     {
         // These fields count things — pirates gauntleted, walkers killed — and the

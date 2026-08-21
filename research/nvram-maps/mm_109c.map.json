@@ -36,7 +36,7 @@
         "slots": [
           "Castle Champion"
         ],
-        "value_type": "score",
+        "value_type": "counter",
         "display_suffix": "Castles Destroyed"
       },
       {
@@ -46,7 +46,7 @@
         "slots": [
           "Joust Champion"
         ],
-        "value_type": "score",
+        "value_type": "counter",
         "display_suffix": "Joust Victories"
       },
       {
@@ -56,7 +56,7 @@
         "slots": [
           "Catapult Champion"
         ],
-        "value_type": "score",
+        "value_type": "counter",
         "display_suffix": "Catapult Slams"
       },
       {
@@ -66,7 +66,7 @@
         "slots": [
           "Peasant Champion"
         ],
-        "value_type": "score",
+        "value_type": "counter",
         "display_suffix": "Peasant Revolts"
       },
       {
@@ -76,7 +76,7 @@
         "slots": [
           "Damsel Champion"
         ],
-        "value_type": "score",
+        "value_type": "counter",
         "display_suffix": "Damsels Saved"
       },
       {
@@ -86,7 +86,7 @@
         "slots": [
           "Troll Champion"
         ],
-        "value_type": "score",
+        "value_type": "counter",
         "display_suffix": "Trolls Destroyed"
       },
       {

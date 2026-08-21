@@ -7,7 +7,7 @@ using Xunit;
 namespace PinballScores.Tests;
 
 /// <summary>
-/// Blanking a machine writes "---" placeholders rather than clearing records, because
+/// Blanking a machine writes a blank-initials placeholder rather than clearing a record, because
 /// a ROM restores its factory default over a record it considers invalid. Those
 /// placeholders must never come back in as real scores, or blanking a board would
 /// refill the API with its own filler.
@@ -17,21 +17,26 @@ public class PlaceholderTests
     private static RemoteScore Score(string? category, string initials, long value) =>
         new() { Table = "smanve_101", Category = category, Initials = initials, Value = value.ToString() };
 
-    [Fact]
-    public void MarkerIsIgnoredWhenReadingBackOffTheMachine()
+    [Theory]
+    [InlineData(" ")]      // the current marker
+    [InlineData("   ")]    // as it reads off a three-character field
+    [InlineData("---")]    // the previous marker, still present in older records
+    [InlineData(" --- ")]
+    public void MarkerIsIgnoredWhenReadingBackOffTheMachine(string initials)
     {
-        // The extractor drops them before they ever reach a submission batch.
-        Assert.True(CategoryRules.IsUnusedSlot("---"));
-        Assert.True(CategoryRules.IsUnusedSlot(" --- "));
+        // The extractor drops these before they ever reach a submission batch.
+        Assert.True(CategoryRules.IsUnusedSlot(initials));
     }
 
     [Fact]
-    public void MarkerIsTheDefaultSoBlankingWorksWithoutExtraConfiguration()
+    public void MarkerIsBlankBecauseWpcRejectsDashes()
     {
-        var options = new SyncOptions();
-
-        Assert.Contains("---", options.PlaceholderInitials);
-        Assert.Equal("---", Placeholder.Default.Initials);
+        // Williams WPC's boot-time validation only accepts initials from its own
+        // selectable alphabet. "-" is not in it, and a record containing one is
+        // reverted to the factory default; a space is accepted and survives.
+        Assert.Equal(" ", Placeholder.Default.Initials);
+        Assert.Equal(" ", new SyncOptions().PlaceholderMarker);
+        Assert.DoesNotContain('-', Placeholder.Default.Initials);
     }
 
     [Fact]
@@ -61,7 +66,7 @@ public class PlaceholderTests
         foreach (var blanked in plan.Skip(2))
         {
             Assert.True(blanked.IsPlaceholder);
-            Assert.Equal("---", blanked.Initials);
+            Assert.Equal(" ", blanked.Initials);
             Assert.Equal(1, blanked.Value);
         }
     }

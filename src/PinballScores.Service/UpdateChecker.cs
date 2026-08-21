@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Velopack;
@@ -25,17 +27,33 @@ public sealed class AutoUpdateOptions
 
     /// <summary>Accept pre-release builds. Useful for testing an update on the cabinet.</summary>
     public bool AllowPrerelease { get; set; }
+
+    /// <summary>Service name used to start ourselves again after an update.</summary>
+    public string ServiceName { get; set; } = "PinballScores";
+
+    /// <summary>
+    /// How long the restart helper waits before starting the service again, giving
+    /// this process time to exit and Velopack time to swap the files.
+    /// </summary>
+    public TimeSpan RestartDelay { get; set; } = TimeSpan.FromSeconds(20);
 }
 
 /// <summary>
 /// Checks for and stages a new release using Velopack, which handles packaging,
 /// delta downloads, atomic swap and rollback.
 ///
-/// The update is staged and applied on exit rather than mid-process: the service
-/// stops itself once the new version is ready and the Windows Service Manager
-/// restarts it (configure the service's recovery action to "Restart the Service").
-/// Applying in-place while a run is active could swap binaries during a write to a
-/// machine's save data.
+/// The update is staged and applied on exit rather than mid-process: applying it
+/// in place while a run is active could swap binaries during a write to a machine's
+/// save data. So the service stages the package, schedules its own restart, and
+/// stops; Velopack swaps the files while nothing is running.
+///
+/// The restart is done by a detached helper rather than by Windows Service Manager
+/// recovery actions. Recovery actions are not usable here: they only fire when a
+/// service terminates *without* reporting SERVICE_STOPPED, or — with the failure
+/// actions flag set — when it stops with a non-zero exit code. A clean stop like
+/// ours reports SERVICE_STOPPED with exit code 0, so SCM would treat it as a normal
+/// shutdown and never bring the service back. The cabinet would quietly stop
+/// collecting scores after its first update.
 /// </summary>
 public sealed class UpdateChecker
 {
@@ -93,7 +111,9 @@ public sealed class UpdateChecker
             manager.WaitExitThenApplyUpdates(update);
             _pendingRestart = true;
 
-            _log.LogInformation("Update {Version} staged; stopping for the service manager to restart us",
+            ScheduleRestart();
+
+            _log.LogInformation("Update {Version} staged; stopping so it can be applied",
                 update.TargetFullRelease.Version);
             _lifetime.StopApplication();
         }
@@ -101,6 +121,48 @@ public sealed class UpdateChecker
         {
             // An unreachable update server must never stop scores being collected.
             _log.LogWarning(ex, "Update check failed");
+        }
+    }
+
+    /// <summary>
+    /// Spawns a detached helper that waits for this process to exit and then starts
+    /// the service again. Deterministic, and independent of how the service's
+    /// recovery actions happen to be configured.
+    ///
+    /// Only meaningful when actually running as a service — an interactive run has
+    /// nothing to restart, and starting the service from a developer machine would
+    /// be surprising.
+    /// </summary>
+    private void ScheduleRestart()
+    {
+        if (!OperatingSystem.IsWindows() || !WindowsServiceHelpers.IsWindowsService())
+        {
+            _log.LogInformation("Not running as a service; the update applies on next start");
+            return;
+        }
+
+        var seconds = Math.Max((int)_options.RestartDelay.TotalSeconds, 1);
+        var service = _options.ServiceName;
+
+        try
+        {
+            // CreateNoWindow and UseShellExecute=false matter here: nothing may flash
+            // up on the cabinet's screen or take focus.
+            using var helper = Process.Start(new ProcessStartInfo("cmd.exe")
+            {
+                Arguments = $"/c timeout /t {seconds} /nobreak >nul & sc start \"{service}\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            });
+
+            _log.LogInformation("Restart of {Service} scheduled in {Seconds}s", service, seconds);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            // Better to stay running on the old version than to stop and not come back.
+            _log.LogError(ex, "Could not schedule a restart; skipping this update to stay running");
+            _pendingRestart = false;
+            throw;
         }
     }
 }

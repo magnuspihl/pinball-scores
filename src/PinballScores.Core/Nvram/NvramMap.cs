@@ -52,6 +52,13 @@ public sealed class NvramMap
 
     public IReadOnlyList<ChecksumRegion> Checksums { get; init; } = [];
 
+    /// <summary>The map's own category rollup, which decides what each slot is submitted as.</summary>
+    public IReadOnlyList<CategoryDefinition> Categories { get; init; } = [];
+
+    /// <summary>The category a slot belongs to, or null if the map does not place it.</summary>
+    public CategoryDefinition? CategoryForSlot(string slotLabel) =>
+        Categories.FirstOrDefault(c => c.Slots.Contains(slotLabel, StringComparer.OrdinalIgnoreCase));
+
     /// <summary>
     /// Value descriptors are looked up in this order. A game's rankable number is
     /// its score if it has one; failing that a counter (Medieval Madness' King of
@@ -73,6 +80,7 @@ public sealed class NvramMap
             HighScores = ParseSlots(root.Prop("high_scores")),
             ModeChampions = ParseSlots(root.Prop("mode_champions")),
             Checksums = [.. ParseChecksums(root.Prop("checksum8"), 1), .. ParseChecksums(root.Prop("checksum16"), 2)],
+            Categories = CategoryDefinition.Parse(root),
         };
     }
 

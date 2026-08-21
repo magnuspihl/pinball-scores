@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\PinballScores.Core\PinballScores.Core.csproj" />
+    <ProjectReference Include="..\..\src\PinballScores.Service\PinballScores.Service.csproj" />
   </ItemGroup>
 
 </Project>

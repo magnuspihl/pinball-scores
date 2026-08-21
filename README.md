@@ -46,10 +46,16 @@ before anything overwrites the machine.
 | Source | Where | How it's read |
 | --- | --- | --- |
 | VPinMAME | `nvram/*.nv`, one file per table | Bundled JSON memory maps |
-| Visual Pinball | shared `User/VPReg.stg` | Managed Compound File reader |
+| Visual Pinball | shared `User/VPReg.stg` | Bundled STG maps, managed Compound File reader |
 
 Both extractors are pure managed code with no external binaries, so the entire
 suite — including decoding real `.nv` and `.stg` files — runs on Linux in CI.
+
+**A table without a bundled map is not read.** That is the rule for both formats.
+`VPReg.stg` in particular is shared and accumulates storages for tables the
+cabinet does not track; those are not cleared when the cabinet is blanked, so
+discovering them by convention would feed stale scores into a freshly wiped
+database. `leprechaun` is the current example, and it is simply not mapped.
 
 ### NVRAM maps
 
@@ -86,20 +92,36 @@ changes. "Grand Champion", "First Place", "#1", "Honor Roll" and "Sultan's Court
 are therefore positional names for rank, not separate boards.
 
 So the main board is submitted with **`category: null`** and rank is derived from
-value order. Only genuinely distinct achievements keep a name, and ranked named
-sets collapse the same way: `Gauntlet Champ 1/2/3` → `GAUNTLET CHAMP`,
-`Officer's Club #1..#4` → `OFFICER'S CLUB`.
+value order. Only genuinely distinct achievements keep a category, and ranked
+named sets collapse into one: `Gauntlet Champ 1/2/3` → `gauntlet_champ`,
+`Officer's Club #1..#4` → `officer_s_club`.
+
+**Which slot belongs to which category is declared by the map**, in its
+`_pinballscores.categories` block — not derived from slot labels. Each entry
+gives a stable `key`, a display `name`, the ordered `slots` it covers, and a
+`value_type`. The category with a null name is the main board.
+
+**The `key` is what gets submitted, not the label.** Labels are the website's to
+change; sending them would mean renaming a category silently splits it in two and
+strands every row stored under the old spelling.
 
 This also makes write-back trivial: rank and slot are the same axis, so assigning
-the API's board to the machine's slots is an index-for-index zip.
+the API's board to the machine's slots is an index-for-index zip, in the slot
+order the map declares.
 
 Values are always `int64`. Never floating point — single-precision silently
 perturbs anything above ~16.7 million, and did: a real `738,778,270` was recorded
 by the previous implementation as `738,778,240`.
 
 Not every value is a points total, so each carries a `value_type`: `score`,
-`counter` (`6 Castles Destroyed`), `duration` (`0:10:00`) or `timestamp`. This
-comes from typed map metadata rather than per-table string matching.
+`counter` (`6 Castles Destroyed`), `duration` (`0:10:00`) or `timestamp`. This is
+taken from the map's category block verbatim — inferring it here would put the
+CLI and the maps into disagreement, which is what declared categories exist to
+prevent. A `display_suffix` is sent alongside for rendering.
+
+Because the type is never inferred, a wrong type in a map is a wrong type on the
+website. A test therefore asserts that any field with a counting suffix is typed
+`counter`, so a map declaring "Castles Destroyed" as a score fails the build.
 
 ## Configuration
 
@@ -122,8 +144,10 @@ Nothing sensitive is compiled in.
 | `EnableWriteBack` | Write the API's board onto the machines |
 | `DryRun` | Report what would happen; submit and write nothing (`--plan`) |
 | `BlockingProcesses` | Never write while one of these runs |
-| `PlaceholderInitials` | Markers ignored on extraction, default `---` (see below) |
+| `PlaceholderInitials` | Historical markers ignored on extraction, default `---` |
+| `PlaceholderMarker` | Initials written when blanking a slot, default a space |
 | `PlaceholderValue` | Value written when blanking a slot, default `1` |
+| `IgnoredTables` | Mapped tables to skip anyway (rarely needed) |
 
 Logs go to `%ProgramData%\PinballScores\logs`, one file per day, kept 14 days,
 plus the Windows Event Log when running as a service.
@@ -153,14 +177,26 @@ ones the API has a score for. A slot the API doesn't fill is blanked, so a score
 the API doesn't know about can never linger on the machine — the cabinet ends up
 showing exactly what the API holds.
 
-Blanking writes `---` with a value of `1` rather than clearing the record: a ROM
-treats a cleared record as invalid and restores its compiled-in factory default in
-its place, so "empty" does not stay empty, but a valid record with a token value
-does. `1` is low enough that any real play beats it immediately.
+Blanking writes **blank initials with a value of `1`** rather than clearing the
+record: a ROM treats a cleared record as invalid and restores its compiled-in
+factory default in its place, so "empty" does not stay empty, but a valid record
+with a token value does. `1` is low enough that any real play beats it
+immediately.
 
-`---` is reserved. Extraction ignores it, so blanking a board never refills the
-API with its own filler. Change it with `PlaceholderInitials` if it ever collides
-with real initials.
+The marker is a space, not a dash. Live-cabinet testing on 2026-08-20 found that
+Williams WPC's boot-time validation rejects `-`, because it is not in the
+machine's own selectable initials alphabet, and silently reverts the record to its
+factory default. A space is in that alphabet and survives a reload, and reads as
+"never played" on every platform's display. This matches `MARKER_INITIALS` in
+`research/tools/reset_demo_scores.py`; the two must agree.
+
+Blank initials are already treated as an unused slot, so a reset machine submits
+nothing. `PlaceholderInitials` additionally ignores the older `---` marker, which
+still exists in records written before the WPC finding.
+
+**Unmapped tables are never written to either**, for the same reason they are
+never read: the blanking tool is map-driven, so an unmapped table is outside the
+system entirely.
 
 **Never write while a game is running** — a game flushes its own save data on exit
 and would discard the write. Runs check `BlockingProcesses` first.
@@ -175,17 +211,69 @@ git tag v1.2.3 && git push origin v1.2.3
 ```
 
 The service checks for updates between runs — never during one, so a swap cannot
-land mid-write — stages the new version, and stops so the Windows Service Manager
-restarts it. Set the service's recovery action to **Restart the Service**.
-Velopack handles delta downloads, atomic swap and rollback.
+land mid-write — stages the new version, schedules its own restart, and stops.
+Velopack applies the update while nothing is running, and handles delta
+downloads, atomic swap and rollback.
+
+The restart is **deliberately not** left to Windows Service Manager recovery
+actions. Recovery only fires when a service terminates without reporting
+`SERVICE_STOPPED`, or (with the failure-actions flag set) when it stops with a
+non-zero exit code. Stopping cleanly for an update reports `SERVICE_STOPPED` with
+exit code 0, which Windows treats as a normal shutdown — so SCM would never bring
+the service back and the cabinet would stop collecting scores after its first
+update. The updater spawns a detached helper that starts the service again
+instead. If that helper cannot be spawned, the update is left staged and the
+service keeps running on the current version rather than stopping.
 
 If the repository is public no credential is needed on the cabinet at all. For a
 private repository set `Updates:AccessToken`.
 
+### Installing
+
+Cut a release first — there is no binary until a tag is pushed:
+
+```sh
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+That runs the Release workflow and attaches the artifacts to a GitHub Release.
+Download `PinballScores-win-Setup.exe` onto the cabinet, then, from an elevated
+PowerShell prompt:
+
+```powershell
+.\PinballScores-win-Setup.exe --installto C:\PinballScores
+.\deploy\Install-PinballScores.ps1 -ExePath C:\PinballScores\current\PinballScores.exe
+```
+
+**`--installto` is not optional.** Velopack's installer is per-user and defaults
+to `%LocalAppData%\PinballScores`, which is the wrong place for a service running
+as LocalSystem — it would resolve a different profile's LocalAppData and fail to
+find its own install. A fixed path keeps the service binary and the update root
+in one place both accounts agree on.
+
+Velopack keeps the running version at `<root>\current`, so the service's binary
+path stays valid across updates.
+
+The install script configures recovery actions for genuine crashes, sets a delayed
+automatic start so it isn't competing with the cabinet's front end at boot, and
+creates `C:\ProgramData\PinballScores`. Put the cabinet's real settings in
+`C:\ProgramData\PinballScores\appsettings.json`, which overrides the copy next to
+the executable — that way an update never overwrites them.
+
+Check it without touching anything:
+
+```powershell
+& 'C:\PinballScores\current\PinballScores.exe' --plan
+```
+
+The **first** install is necessarily manual: auto-update needs an existing
+Velopack install to update from, so a version has to be on the machine before
+updates do anything at all.
+
 ## Development
 
 ```
-dotnet test          # 78 tests, no Windows required
+dotnet test          # 104 tests, no Windows required
 dotnet run --project src/PinballScores.Service -- --once \
   --PinballScores:NvramPath=ScoresData/nvram \
   --PinballScores:VpRegPath=ScoresData/User/VPReg.stg \

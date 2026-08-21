@@ -12,11 +12,16 @@ public sealed class MapCatalog
 {
     private const string MapResourcePrefix = "PinballScores.Core.Maps.";
     private const string PlatformSegment = "platforms.";
+    private const string StgSegment = "stg.";
 
     private readonly Dictionary<string, NvramMap> _maps = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, PlatformDefinition> _platforms = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, StgMap> _stgMaps = new(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyCollection<string> KnownRoms => _maps.Keys;
+
+    /// <summary>Visual Pinball tables the cabinet tracks. Anything else in VPReg.stg is ignored.</summary>
+    public IReadOnlyCollection<StgMap> StgMaps => _stgMaps.Values;
 
     public static MapCatalog Load(string? overrideDirectory = null)
     {
@@ -35,6 +40,10 @@ public sealed class MapCatalog
             {
                 var platformName = TrimSuffix(relative[PlatformSegment.Length..], ".json");
                 catalog._platforms[platformName] = PlatformDefinition.Parse(platformName, doc);
+            }
+            else if (relative.StartsWith(StgSegment, StringComparison.OrdinalIgnoreCase))
+            {
+                if (StgMap.Parse(doc) is { } stg) catalog._stgMaps[stg.Storage] = stg;
             }
             else
             {
@@ -60,12 +69,21 @@ public sealed class MapCatalog
 
             using (doc)
             {
-                var isPlatform = Path.GetDirectoryName(path)?
-                    .EndsWith("platforms", StringComparison.OrdinalIgnoreCase) ?? false;
-                var name = TrimSuffix(Path.GetFileName(path), isPlatform ? ".json" : ".map.json");
-
-                if (isPlatform) _platforms[name] = PlatformDefinition.Parse(name, doc);
-                else _maps[name] = NvramMap.Parse(name, doc);
+                var folder = Path.GetFileName(Path.GetDirectoryName(path)) ?? "";
+                if (folder.Equals("platforms", StringComparison.OrdinalIgnoreCase))
+                {
+                    var name = TrimSuffix(Path.GetFileName(path), ".json");
+                    _platforms[name] = PlatformDefinition.Parse(name, doc);
+                }
+                else if (folder.Equals("stg", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (StgMap.Parse(doc) is { } stg) _stgMaps[stg.Storage] = stg;
+                }
+                else
+                {
+                    var name = TrimSuffix(Path.GetFileName(path), ".map.json");
+                    _maps[name] = NvramMap.Parse(name, doc);
+                }
             }
         }
     }

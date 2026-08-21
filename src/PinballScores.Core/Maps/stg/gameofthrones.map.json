@@ -1,7 +1,7 @@
 {
   "_fileformat": "pinballscores-stg-0.1",
   "_notes": [
-    "Guardians of the Galaxy (VPX)",
+    "Game of Thrones (VPX)",
     "Visual Pinball X native table. State lives in User/VPReg.stg, an OLE",
     "Compound File: one storage per table, one stream per setting, each stream",
     "holding a UTF-16LE string. Scores are decimal strings, initials are plain",
@@ -17,8 +17,8 @@
     "supports resizing streams natively."
   ],
   "_pinballscores": {
-    "cabinet_table": "gotg_2020",
-    "title": "Guardians of the Galaxy (VPX)",
+    "cabinet_table": "gameofthrones",
+    "title": "Game of Thrones (VPX)",
     "status": "generated from ScoresData/User/VPReg.stg and validated",
     "source_file": "User/VPReg.stg",
     "initials_padding": "none",
@@ -32,49 +32,27 @@
           "High Score #2",
           "High Score #3",
           "High Score #4",
-          "High Score #5"
-        ]
-      },
-      {
-        "key": "cb",
-        "name": "CB",
-        "order": "ranked",
-        "slots": [
-          "CB"
-        ]
-      },
-      {
-        "key": "combo",
-        "name": "Combo",
-        "order": "ranked",
-        "slots": [
-          "Combo"
-        ],
-        "value_type": "counter"
-      },
-      {
-        "key": "immo",
-        "name": "IMMO",
-        "order": "ranked",
-        "slots": [
-          "IMMO"
-        ]
-      },
-      {
-        "key": "xandar",
-        "name": "Xandar",
-        "order": "ranked",
-        "slots": [
-          "Xandar"
+          "High Score #5",
+          "High Score #6",
+          "High Score #7",
+          "High Score #8",
+          "High Score #9",
+          "High Score #10",
+          "High Score #11",
+          "High Score #12",
+          "High Score #13",
+          "High Score #14",
+          "High Score #15",
+          "High Score #16"
         ]
       }
     ],
-    "map_version": "9c608ef69e32"
+    "map_version": "3979d7bf18d2"
   },
   "_metadata": {
     "version": 1,
     "platform": "vpx-stg",
-    "storage": "gotg_2020"
+    "storage": "gameofthrones"
   },
   "high_scores": [
     {
@@ -131,54 +109,125 @@
         "stream": "HighScore5",
         "encoding": "decimal_string"
       }
-    }
-  ],
-  "mode_champions": [
+    },
     {
-      "label": "CB",
-      "_note": "field name taken verbatim from the table script",
+      "label": "High Score #6",
       "initials": {
-        "stream": "HighScoreCBName",
+        "stream": "HighScore6Name",
         "encoding": "string"
       },
       "score": {
-        "stream": "HighScoreCB",
+        "stream": "HighScore6",
         "encoding": "decimal_string"
       }
     },
     {
-      "label": "Combo",
-      "_note": "field name taken verbatim from the table script",
+      "label": "High Score #7",
       "initials": {
-        "stream": "HighScoreComboName",
+        "stream": "HighScore7Name",
         "encoding": "string"
       },
       "score": {
-        "stream": "HighScoreCombo",
+        "stream": "HighScore7",
         "encoding": "decimal_string"
       }
     },
     {
-      "label": "IMMO",
-      "_note": "field name taken verbatim from the table script",
+      "label": "High Score #8",
       "initials": {
-        "stream": "HighScoreIMMOName",
+        "stream": "HighScore8Name",
         "encoding": "string"
       },
       "score": {
-        "stream": "HighScoreIMMO",
+        "stream": "HighScore8",
         "encoding": "decimal_string"
       }
     },
     {
-      "label": "Xandar",
-      "_note": "field name taken verbatim from the table script",
+      "label": "High Score #9",
       "initials": {
-        "stream": "HighScoreXandarName",
+        "stream": "HighScore9Name",
         "encoding": "string"
       },
       "score": {
-        "stream": "HighScoreXandar",
+        "stream": "HighScore9",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #10",
+      "initials": {
+        "stream": "HighScore10Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore10",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #11",
+      "initials": {
+        "stream": "HighScore11Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore11",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #12",
+      "initials": {
+        "stream": "HighScore12Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore12",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #13",
+      "initials": {
+        "stream": "HighScore13Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore13",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #14",
+      "initials": {
+        "stream": "HighScore14Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore14",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #15",
+      "initials": {
+        "stream": "HighScore15Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore15",
+        "encoding": "decimal_string"
+      }
+    },
+    {
+      "label": "High Score #16",
+      "initials": {
+        "stream": "HighScore16Name",
+        "encoding": "string"
+      },
+      "score": {
+        "stream": "HighScore16",
         "encoding": "decimal_string"
       }
     }

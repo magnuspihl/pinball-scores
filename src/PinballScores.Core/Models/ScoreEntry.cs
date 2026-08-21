@@ -47,7 +47,7 @@ public sealed record ScoreEntry(
     public override string ToString()
     {
         var category = Category ?? "(main board)";
-        var suffix = string.IsNullOrEmpty(DisplaySuffix) ? "" : DisplaySuffix;
+        var suffix = string.IsNullOrEmpty(DisplaySuffix) ? "" : " " + DisplaySuffix;
         return $"{Table} | {category} | {Player} | {Value}{suffix} [{ValueKind}]";
     }
 }

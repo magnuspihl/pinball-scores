@@ -1,7 +1,7 @@
 {
   "_fileformat": "pinballscores-stg-0.1",
   "_notes": [
-    "Guardians of the Galaxy (VPX)",
+    "Deadpool (VPX)",
     "Visual Pinball X native table. State lives in User/VPReg.stg, an OLE",
     "Compound File: one storage per table, one stream per setting, each stream",
     "holding a UTF-16LE string. Scores are decimal strings, initials are plain",
@@ -17,8 +17,8 @@
     "supports resizing streams natively."
   ],
   "_pinballscores": {
-    "cabinet_table": "gotg_2020",
-    "title": "Guardians of the Galaxy (VPX)",
+    "cabinet_table": "jpsdeadpool",
+    "title": "Deadpool (VPX)",
     "status": "generated from ScoresData/User/VPReg.stg and validated",
     "source_file": "User/VPReg.stg",
     "initials_padding": "none",
@@ -31,50 +31,16 @@
           "High Score #1",
           "High Score #2",
           "High Score #3",
-          "High Score #4",
-          "High Score #5"
-        ]
-      },
-      {
-        "key": "cb",
-        "name": "CB",
-        "order": "ranked",
-        "slots": [
-          "CB"
-        ]
-      },
-      {
-        "key": "combo",
-        "name": "Combo",
-        "order": "ranked",
-        "slots": [
-          "Combo"
-        ],
-        "value_type": "counter"
-      },
-      {
-        "key": "immo",
-        "name": "IMMO",
-        "order": "ranked",
-        "slots": [
-          "IMMO"
-        ]
-      },
-      {
-        "key": "xandar",
-        "name": "Xandar",
-        "order": "ranked",
-        "slots": [
-          "Xandar"
+          "High Score #4"
         ]
       }
     ],
-    "map_version": "9c608ef69e32"
+    "map_version": "6f789922f31a"
   },
   "_metadata": {
     "version": 1,
     "platform": "vpx-stg",
-    "storage": "gotg_2020"
+    "storage": "jpsdeadpool"
   },
   "high_scores": [
     {
@@ -118,67 +84,6 @@
       },
       "score": {
         "stream": "HighScore4",
-        "encoding": "decimal_string"
-      }
-    },
-    {
-      "label": "High Score #5",
-      "initials": {
-        "stream": "HighScore5Name",
-        "encoding": "string"
-      },
-      "score": {
-        "stream": "HighScore5",
-        "encoding": "decimal_string"
-      }
-    }
-  ],
-  "mode_champions": [
-    {
-      "label": "CB",
-      "_note": "field name taken verbatim from the table script",
-      "initials": {
-        "stream": "HighScoreCBName",
-        "encoding": "string"
-      },
-      "score": {
-        "stream": "HighScoreCB",
-        "encoding": "decimal_string"
-      }
-    },
-    {
-      "label": "Combo",
-      "_note": "field name taken verbatim from the table script",
-      "initials": {
-        "stream": "HighScoreComboName",
-        "encoding": "string"
-      },
-      "score": {
-        "stream": "HighScoreCombo",
-        "encoding": "decimal_string"
-      }
-    },
-    {
-      "label": "IMMO",
-      "_note": "field name taken verbatim from the table script",
-      "initials": {
-        "stream": "HighScoreIMMOName",
-        "encoding": "string"
-      },
-      "score": {
-        "stream": "HighScoreIMMO",
-        "encoding": "decimal_string"
-      }
-    },
-    {
-      "label": "Xandar",
-      "_note": "field name taken verbatim from the table script",
-      "initials": {
-        "stream": "HighScoreXandarName",
-        "encoding": "string"
-      },
-      "score": {
-        "stream": "HighScoreXandar",
         "encoding": "decimal_string"
       }
     }

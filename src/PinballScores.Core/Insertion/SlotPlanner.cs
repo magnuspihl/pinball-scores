@@ -20,11 +20,18 @@ public sealed record SlotAssignment(
 /// Machines are blanked by writing a very low score rather than an empty record:
 /// a ROM treats a cleared record as invalid and restores its compiled-in factory
 /// default, so "empty" does not stay empty. A valid record with a token value does.
+///
+/// The marker is a blank, not a dash. Live-cabinet testing on 2026-08-20 found
+/// that Williams WPC's boot-time validation rejects "-" — it is not in the
+/// machine's own selectable initials alphabet — and silently reverts the record to
+/// its factory default. A space is in that alphabet and survives a reload, and it
+/// reads as "never played" on every platform's display. Matches
+/// <c>MARKER_INITIALS</c> in research/tools/reset_demo_scores.py.
 /// </summary>
 /// <param name="Initials">Reserved marker, ignored on extraction so placeholders never round-trip into the API.</param>
 public sealed record Placeholder(string Initials, long Value)
 {
-    public static readonly Placeholder Default = new("---", 1);
+    public static readonly Placeholder Default = new(" ", 1);
 }
 
 /// <summary>
@@ -51,11 +58,19 @@ public static class SlotPlanner
     {
         placeholder ??= Placeholder.Default;
         var assignments = new List<SlotAssignment>();
+        var slots = map.HighScores.Concat(map.ModeChampions).ToList();
 
-        assignments.AddRange(Assign(map.HighScores, board, category: null, placeholder));
+        // Driven entirely by the map's category block, which also fixes the order
+        // slots are filled in.
+        foreach (var category in map.Categories)
+        {
+            var ordered = category.Slots
+                .Select(label => slots.FirstOrDefault(s => string.Equals(s.Label, label, StringComparison.OrdinalIgnoreCase)))
+                .OfType<ScoreSlot>()
+                .ToList();
 
-        foreach (var group in map.ModeChampions.GroupBy(s => CategoryRules.Normalise(s.Label)))
-            assignments.AddRange(Assign([.. group], board, group.Key, placeholder));
+            assignments.AddRange(Assign(ordered, board, category.ApiCategory, placeholder));
+        }
 
         return assignments;
     }
