@@ -51,11 +51,11 @@ public sealed class NvramScoreSource : IScoreSource
     private ExtractionResult ReadFile(string path, string rom)
     {
         var map = _catalog.Find(rom);
-        if (map is null) return ExtractionResult.Skip(rom, "no memory map bundled for this ROM");
+        if (map is null) return ExtractionResult.NotOurs(rom, "no memory map bundled for this ROM");
 
         var data = File.ReadAllBytes(path);
         // A 3-byte placeholder is not a machine; PinMAME writes real files at region size.
-        if (data.Length < 512) return ExtractionResult.Skip(rom, $"file too small ({data.Length} bytes)");
+        if (data.Length < 512) return ExtractionResult.NotOurs(rom, $"file too small ({data.Length} bytes)");
 
         var reader = new NvramReader(data, map, _catalog.PlatformFor(map));
 

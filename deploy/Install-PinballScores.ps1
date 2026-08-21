@@ -81,12 +81,28 @@ sc.exe config $ServiceName start= delayed-auto | Out-Null
 
 New-Item -ItemType Directory -Force -Path 'C:\ProgramData\PinballScores\logs' | Out-Null
 
+# Seed the machine-level settings from the packaged defaults, but NEVER overwrite
+# them. The packaged appsettings.json is replaced by every update, so this is the
+# only copy that survives one — and losing a cabinet's configuration to an
+# auto-update would be a nasty surprise.
+$machineSettings = 'C:\ProgramData\PinballScores\appsettings.json'
+if (Test-Path $machineSettings) {
+    Write-Host "Keeping existing settings: $machineSettings"
+}
+else {
+    $packaged = Join-Path (Split-Path $ExePath -Parent) 'appsettings.json'
+    if (Test-Path $packaged) {
+        Copy-Item $packaged $machineSettings
+        Write-Host "Created $machineSettings from the packaged defaults - edit it before relying on this cabinet."
+    }
+}
+
 Write-Host 'Starting...'
 Start-Service -Name $ServiceName
 Get-Service -Name $ServiceName | Format-List Name, Status, StartType
 
 Write-Host ''
-Write-Host 'Configuration: C:\ProgramData\PinballScores\appsettings.json (overrides the one next to the exe)'
+Write-Host 'Configuration: C:\ProgramData\PinballScores\appsettings.json  (survives updates - edit this one)'
 Write-Host 'Logs:          C:\ProgramData\PinballScores\logs'
 Write-Host ''
 Write-Host 'Verify without touching anything:'
