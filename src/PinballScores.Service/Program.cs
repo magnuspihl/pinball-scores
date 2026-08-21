@@ -23,19 +23,7 @@ var dryRun = HasSwitch("--plan");
 var runOnce = HasSwitch("--once") || dryRun;
 var configArgs = args.Where(a => !switches.Contains(a, StringComparer.OrdinalIgnoreCase)).ToArray();
 
-var builder = Host.CreateApplicationBuilder(configArgs);
-
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-    .AddJsonFile(
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "PinballScores",
-            "appsettings.json"),
-        optional: true,
-        reloadOnChange: true)
-    .AddEnvironmentVariables("PINBALLSCORES_")
-    .AddCommandLine(configArgs);
+var builder = ServiceHost.CreateBuilder(configArgs);
 
 if (dryRun)
 {
@@ -49,7 +37,7 @@ builder.Services.Configure<AutoUpdateOptions>(builder.Configuration.GetSection(A
 // Never write to the console: there is no console, and anything that tried to
 // create one would risk a window appearing on the cabinet.
 builder.Logging.ClearProviders();
-builder.Logging.AddProvider(new FileLoggerProvider(LogDirectory()));
+builder.Logging.AddProvider(new FileLoggerProvider(ServiceHost.LogDirectory));
 if (OperatingSystem.IsWindows() && WindowsServiceHelpers.IsWindowsService())
 {
     WindowsLogging.AddEventLog(builder.Logging);
@@ -99,9 +87,6 @@ builder.Services.AddWindowsService(options => options.ServiceName = "PinballScor
 await builder.Build().RunAsync();
 return 0;
 
-static string LogDirectory() => Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-    "PinballScores",
-    "logs");
+
 
 public partial class Program;
