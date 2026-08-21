@@ -237,13 +237,16 @@ git tag v1.0.0 && git push origin v1.0.0
 ```
 
 That runs the Release workflow and attaches the artifacts to a GitHub Release.
-Download `PinballScores-win-Setup.exe` onto the cabinet, then, from an elevated
-PowerShell prompt:
+Download `PinballScores-win-Setup.exe` onto the cabinet — that single file is
+everything you need — then, from an elevated PowerShell prompt:
 
 ```powershell
 .\PinballScores-win-Setup.exe --installto C:\PinballScores
-.\deploy\Install-PinballScores.ps1 -ExePath C:\PinballScores\current\PinballScores.exe
+C:\PinballScores\current\Install-PinballScores.ps1
 ```
+
+The install scripts are packaged with the app, so they land beside the executable
+and pick it up automatically. There is no need to clone the repo onto the cabinet.
 
 **`--installto` is not optional.** Velopack's installer is per-user and defaults
 to `%LocalAppData%\PinballScores`, which is the wrong place for a service running
@@ -264,6 +267,13 @@ Check it without touching anything:
 
 ```powershell
 & 'C:\PinballScores\current\PinballScores.exe' --plan
+```
+
+To remove the service again, `Install-PinballScores.ps1` has a counterpart beside
+it — add `-Purge` to also delete configuration and logs:
+
+```powershell
+C:\PinballScores\current\Uninstall-PinballScores.ps1
 ```
 
 The **first** install is necessarily manual: auto-update needs an existing

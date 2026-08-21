@@ -31,6 +31,10 @@
 
   <ItemGroup>
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Ship the service install scripts inside the package, so they land next to
+         the executable on the cabinet. Otherwise registering the service would
+         require cloning the repo onto the machine just to get two .ps1 files. -->
+    <None Include="..\..\deploy\*.ps1" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

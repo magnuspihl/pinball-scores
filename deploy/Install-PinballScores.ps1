@@ -17,12 +17,18 @@
     LocalSystem service cannot resolve to the same place. Point -ExePath at the
     'current' folder underneath, which stays valid across updates.
 
+    This script ships inside the package, so after installing it sits next to the
+    executable and needs no arguments.
+
+.EXAMPLE
+    C:\PinballScores\current\Install-PinballScores.ps1
+
 .EXAMPLE
     .\Install-PinballScores.ps1 -ExePath 'C:\PinballScores\current\PinballScores.exe'
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
+    # Defaults to the executable sitting beside this script.
     [string]$ExePath,
 
     [string]$ServiceName = 'PinballScores',
@@ -31,6 +37,13 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+if (-not $ExePath) {
+    $ExePath = Join-Path $PSScriptRoot 'PinballScores.exe'
+    if (-not (Test-Path $ExePath)) {
+        throw "Could not find PinballScores.exe next to this script. Pass -ExePath explicitly."
+    }
+}
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
         ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
