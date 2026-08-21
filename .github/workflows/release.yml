@@ -57,6 +57,18 @@ jobs:
       - name: Install Velopack CLI
         run: dotnet tool install -g vpk
 
+      # Velopack can only build a delta against a package it can see locally, and
+      # CI starts from a clean checkout. Without this every update is a full ~70MB
+      # download. Expected to fail on the very first release, when there is no
+      # previous one to fetch.
+      - name: Fetch the previous release, for delta generation
+        continue-on-error: true
+        run: >
+          vpk download github
+          --repoUrl https://github.com/${{ github.repository }}
+          --token ${{ secrets.GITHUB_TOKEN }}
+          --outputDir releases
+
       - name: Build the update package
         run: >
           vpk pack
@@ -69,6 +81,10 @@ jobs:
 
       # Velopack verifies package integrity on download and applies updates
       # atomically with rollback, so a partial download cannot brick the cabinet.
+      #
+      # The cabinet only takes an update whose version is HIGHER than what it is
+      # running, so every release needs its version bumped — re-running this with
+      # the same version publishes a package no machine will ever install.
       - name: Publish the GitHub Release
         run: >
           vpk upload github
