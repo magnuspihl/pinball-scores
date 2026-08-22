@@ -140,9 +140,19 @@ gives a stable `key`, a display `name`, the ordered `slots` it covers, and a
 change; sending them would mean renaming a category silently splits it in two and
 strands every row stored under the old spelling.
 
-This also makes write-back trivial: rank and slot are the same axis, so assigning
-the API's board to the machine's slots is an index-for-index zip, in the slot
-order the map declares.
+**Coming back the other way, a category is matched loosely.** The API keys a
+category by the string it was first stored under, which for every row loaded
+before this CLI existed is the ROM's own label in upper case — `GET /api/scores`
+answers `CASTLE CHAMPION` where the map says `castle_champion`. Comparing the two
+literally matched nothing but single-word categories, and a category with no
+matching rows is not left alone: its slots are filled with the blanking
+placeholder, so Medieval Madness planned all eleven champion slots as empty while
+the API held scores for every one of them. `CategoryDefinition.Matches` therefore
+ignores case and separators and accepts the display name as well as the key.
+
+This still leaves write-back trivial: rank and slot are the same axis, so
+assigning the API's board to the machine's slots is an index-for-index zip, in
+the slot order the map declares.
 
 Values are always `int64`. Never floating point — single-precision silently
 perturbs anything above ~16.7 million, and did: a real `738,778,270` was recorded
