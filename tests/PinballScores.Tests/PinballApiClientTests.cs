@@ -230,4 +230,27 @@ public class PinballApiClientTests
         Assert.Equal(16_000_000_000L, board[1].AsInt64);
         Assert.Contains("limit=5", handler.LastRequest!.RequestUri!.Query);
     }
+
+    [Fact]
+    public async Task ReadsTheMetadataAWriteBackNeedsToRestoreARecord()
+    {
+        // Write-back cannot reconstruct a coronation's date or ordinal from the
+        // value, so if these do not survive the round trip a king lands on the
+        // cabinet wearing the previous king's date — the bug this all started with.
+        var handler = new StubHandler("""
+            [{"table":"mm_109c","category":"king_of_the_realm","initials":"KAS","value":"16","rank":1,
+              "metadata":{"crowned_at":"2026-06-14 20:41","crowned_count":"2"}},
+             {"table":"mm_109c","category":null,"initials":"FRY","value":"89407420","rank":1}]
+            """);
+        using var client = Client(handler);
+
+        var board = await client.GetBoardAsync("mm_109c", 16);
+
+        Assert.Equal("2026-06-14 20:41", board[0].Metadata!["crowned_at"]);
+        Assert.Equal("2", board[0].Metadata!["crowned_count"]);
+
+        // Every other category sends none, and must read back as none rather than
+        // an empty object the writer would then try to apply.
+        Assert.Null(board[1].Metadata);
+    }
 }
