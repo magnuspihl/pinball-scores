@@ -1,3 +1,4 @@
+using PinballScores.Core.Api;
 using PinballScores.Core.Extraction;
 using PinballScores.Core.Models;
 using Xunit;
@@ -289,5 +290,48 @@ public class NvramReaderTests
 
         Assert.Equal(ScoreValueKind.Counter, entry.ValueKind);
         Assert.Equal(value, entry.Value);
+    }
+
+    [Fact]
+    public void ACoronationCarriesItsDateAndOrdinal()
+    {
+        // A king is not a number: the cabinet shows who, when, and how many times
+        // he has been crowned. The value alone is the machine's Battle-for-the-
+        // Kingdom completion count, which the display never even shows — read it on
+        // its own and a write-back leaves a new name on the old king's date.
+        var king = TestData.ReaderFor("mm_109c").ReadScores("mm_109c")
+            .First(s => s.Category == "king_of_the_realm");
+
+        Assert.Equal("KOP", king.Player);
+        Assert.Equal(1, king.Value);
+        Assert.NotNull(king.Metadata);
+        Assert.Equal("2022-12-31 21:32", king.Metadata!["crowned_at"]);
+        Assert.Equal("1", king.Metadata["crowned_count"]);
+    }
+
+    [Fact]
+    public void ADateIsSubmittedAsWallClockTextNotAnInstant()
+    {
+        // A WPC clock stores no zone. Anything that looks like an instant invites a
+        // conversion, and a conversion moves every date by the cabinet's offset.
+        var king = TestData.ReaderFor("mm_109c").ReadScores("mm_109c")
+            .First(s => s.Category == "king_of_the_realm");
+
+        var submitted = ScoreSubmission.From(king);
+
+        Assert.Equal("2022-12-31 21:32", submitted.Metadata!["crowned_at"]);
+        Assert.Equal(king.Value, ScoreValue.Parse(submitted.Metadata["crowned_count"]));
+        Assert.Equal("1", submitted.Value);
+    }
+
+    [Fact]
+    public void OnlyTheCategoriesThatDeclareMetadataCarryAny()
+    {
+        // Every other board is one number per row, and an empty object on the wire
+        // would only invite the API to store something meaningless.
+        var scores = TestData.ReaderFor("mm_109c").ReadScores("mm_109c")
+            .Where(s => s.Category != "king_of_the_realm");
+
+        Assert.All(scores, s => Assert.Null(s.Metadata));
     }
 }

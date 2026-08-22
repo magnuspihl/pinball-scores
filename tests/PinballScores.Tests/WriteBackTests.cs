@@ -15,6 +15,20 @@ public class WriteBackTests
     private static RemoteScore Score(string? category, string initials, long value) =>
         new() { Category = category, Initials = initials, Value = value.ToString() };
 
+    /// <summary>A coronation as the API holds it: who, which completion, when, and how often.</summary>
+    private static RemoteScore King(string initials, long completion, string crownedAt, int crownedCount) =>
+        new()
+        {
+            Category = "king_of_the_realm",
+            Initials = initials,
+            Value = completion.ToString(),
+            Metadata = new Dictionary<string, string>
+            {
+                ["crowned_at"] = crownedAt,
+                ["crowned_count"] = crownedCount.ToString(),
+            },
+        };
+
     private static string CopyNvram(string rom)
     {
         var dir = Directory.CreateTempSubdirectory("wb-nv-").FullName;
@@ -124,7 +138,7 @@ public class WriteBackTests
         var allowed = new HashSet<int>();
         foreach (var slot in map.HighScores.Concat(map.ModeChampions))
         {
-            foreach (var descriptor in new[] { slot.Initials, slot.Value })
+            foreach (var descriptor in slot.Fields.Values.Append(slot.Initials))
             {
                 if (descriptor is null) continue;
                 foreach (var address in descriptor.Addresses())
@@ -173,21 +187,33 @@ public class WriteBackTests
         var result = await new NvramScoreWriter(TestData.Catalog, dir)
             .WriteAsync("mm_109c", [Score(null, "AAA", 999_999_999_999)]);
 
-        Assert.False(result.Applied);
-        Assert.Contains("write failed", result.Skipped);
+        Assert.Contains(result.Planned, line => line.StartsWith("main left untouched:"));
+
+        var read = new NvramScoreSource(dir, TestData.Catalog).Extract().Single();
+        Assert.DoesNotContain(read.Scores, s => s.Player == "AAA");
     }
 
     [Fact]
-    public async Task AFailedWriteLeavesTheOriginalUntouched()
+    public async Task AFailedCategoryLeavesItsOwnSlotsUntouched()
     {
+        // One unwritable value used to fail the whole machine. It now costs that
+        // category and nothing else — the rest of the board is still applied, and
+        // the failed category keeps the bytes it already had.
         var dir = CopyNvram("mm_109c");
-        var path = Path.Combine(dir, "mm_109c.nv");
-        var before = File.ReadAllBytes(path);
+        var before = new NvramScoreSource(dir, TestData.Catalog).Extract().Single()
+            .Scores.Where(s => s.Category is null).ToList();
 
-        await new NvramScoreWriter(TestData.Catalog, dir)
-            .WriteAsync("mm_109c", [Score(null, "AAA", 999_999_999_999)]);
+        var result = await new NvramScoreWriter(TestData.Catalog, dir).WriteAsync("mm_109c",
+        [
+            Score(null, "AAA", 999_999_999_999),
+            Score("madness_champion", "BBB", 30_000_000),
+        ]);
 
-        Assert.Equal(before, File.ReadAllBytes(path));
+        Assert.True(result.Applied, result.Skipped);
+
+        var after = new NvramScoreSource(dir, TestData.Catalog).Extract().Single();
+        Assert.Equal(before, after.Scores.Where(s => s.Category is null).ToList());
+        Assert.Contains(after.Scores, s => s is { Player: "BBB", Value: 30_000_000, Category: "madness_champion" });
     }
 
     // ---------- Visual Pinball ----------
@@ -360,6 +386,71 @@ public class WriteBackTests
         var second = map.HighScores[1];
         Assert.Equal("   ", reader.ReadChars(second.Initials!));
         Assert.Equal(1, reader.ReadValue(second.Value!));
+    }
+
+    [Fact]
+    public async Task ACoronationIsWrittenWholeOrNotAtAll()
+    {
+        // The bug this fixes: only initials and the counter were written, so a king
+        // arrived on the cabinet wearing the previous king's date and ordinal — the
+        // factory-seeded 2022-12-31 21:32 that every untouched machine ships with.
+        var dir = CopyNvram("mm_109c");
+
+        var result = await new NvramScoreWriter(TestData.Catalog, dir).WriteAsync("mm_109c",
+        [
+            King("KAS", 16, "2026-06-14 20:41", 2),
+            King("VIB", 14, "2026-03-02 17:08", 1),
+        ]);
+
+        Assert.True(result.Applied, result.Skipped);
+
+        var kings = new NvramScoreSource(dir, TestData.Catalog).Extract().Single()
+            .Scores.Where(s => s.Category == "king_of_the_realm").ToList();
+
+        Assert.Equal(2, kings.Count);
+        Assert.Equal(("KAS", 16L), (kings[0].Player, kings[0].Value));
+        Assert.Equal("2026-06-14 20:41", kings[0].Metadata!["crowned_at"]);
+        Assert.Equal("2", kings[0].Metadata!["crowned_count"]);
+        Assert.Equal("2026-03-02 17:08", kings[1].Metadata!["crowned_at"]);
+    }
+
+    [Fact]
+    public async Task AWrittenClockKeepsTheWeekdayTheMachineWouldStore()
+    {
+        // The weekday is stored, not derived, and WPC counts Sunday=1..Saturday=7.
+        // Get it wrong and the DMD names the wrong day beside a correct date.
+        var dir = CopyNvram("mm_109c");
+        await new NvramScoreWriter(TestData.Catalog, dir)
+            .WriteAsync("mm_109c", [King("KAS", 16, "2026-06-14 20:41", 1)]);
+
+        var map = TestData.Catalog.Find("mm_109c")!;
+        var platform = TestData.Catalog.PlatformFor(map);
+        var data = File.ReadAllBytes(Path.Combine(dir, "mm_109c.nv"));
+        var clock = map.ModeChampions.Single(s => s.Label == "King of the Realm #1").Field("timestamp")!;
+        var bytes = clock.Addresses().Select(a => data[(int)(a - platform.NvramBaseAddress)]).ToArray();
+
+        // 2026-06-14 is a Sunday.
+        Assert.Equal(new byte[] { 0x07, 0xEA, 6, 14, 1, 20, 41 }, bytes);
+    }
+
+    [Fact]
+    public async Task ABlankedCoronationIsZeroedTheWayTheMachineDoesIt()
+    {
+        // A log's empty slot is zero — that is what an untouched Medieval Madness
+        // holds in kings #2-#4 — not the low-but-nonzero marker a ranked board needs
+        // to stop the ROM restoring its factory default.
+        var dir = CopyNvram("mm_109c");
+        await new NvramScoreWriter(TestData.Catalog, dir)
+            .WriteAsync("mm_109c", [King("KAS", 16, "2026-06-14 20:41", 1)]);
+
+        var map = TestData.Catalog.Find("mm_109c")!;
+        var reader = new NvramReader(File.ReadAllBytes(Path.Combine(dir, "mm_109c.nv")), map,
+            TestData.Catalog.PlatformFor(map));
+        var empty = map.ModeChampions.Single(s => s.Label == "King of the Realm #2");
+
+        Assert.Equal("   ", reader.ReadChars(empty.Initials!));
+        Assert.Equal(0, reader.ReadValue(empty.Field("counter")!));
+        Assert.Equal(0, reader.ReadValue(empty.Field("nth time")!));
     }
 
     [Fact]

@@ -78,21 +78,25 @@ public sealed class NvramScoreWriter : IScoreWriter
         if (!File.Exists(path)) return Task.FromResult(WriteResult.Skip(table, "no .nv file"));
 
         var plan = SlotPlanner.Plan(map, board, _placeholder);
-        var planned = plan
-            .Select(a => $"{a.SlotLabel} <- {a.Initials} {a.Value}{(a.IsPlaceholder ? " (blank)" : "")}")
-            .ToList();
+        var planned = plan.Select(Describe).ToList();
 
         if (dryRun) return Task.FromResult(new WriteResult(table, Applied: false, planned, "dry run"));
 
         try
         {
             var original = File.ReadAllBytes(path);
-            var updated = Apply(map, original, plan);
+            var failures = new List<(string? Category, string Reason)>();
+            var updated = Apply(map, original, plan, failures);
+            planned.AddRange(failures.Select(f => $"{f.Category ?? "main"} left untouched: {f.Reason}"));
 
             // Refuse to write anything we cannot read back correctly. A map that is
             // subtly wrong would otherwise leave the machine in a state neither we
-            // nor the ROM agrees with.
-            if (Verify(map, updated, plan) is { } mismatch)
+            // nor the ROM agrees with. Categories dropped above are excluded — they
+            // were never written, and that is already reported.
+            var applied = plan
+                .Where(a => !failures.Any(f => string.Equals(f.Category, a.Category, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+            if (Verify(map, updated, applied) is { } mismatch)
                 return Task.FromResult(WriteResult.Skip(table, $"write verification failed: {mismatch}"));
 
             if (updated.AsSpan().SequenceEqual(original))
@@ -108,24 +112,73 @@ public sealed class NvramScoreWriter : IScoreWriter
         }
     }
 
-    private byte[] Apply(NvramMap map, byte[] original, IReadOnlyList<SlotAssignment> plan)
+    /// <summary>One plan line, including the extra fields so --plan shows the whole record.</summary>
+    private static string Describe(SlotAssignment assignment)
     {
-        var writer = new NvramWriter(original, map, _catalog.PlatformFor(map));
-        var slots = map.HighScores.Concat(map.ModeChampions).ToList();
+        var extra = assignment.Fields is { Count: > 0 } fields
+            ? " " + string.Join(" ", fields.Select(f => $"{f.Key}={f.Value}"))
+            : "";
 
-        foreach (var assignment in plan)
+        return $"{assignment.SlotLabel} <- {assignment.Initials} {assignment.Value}{extra}" +
+               (assignment.IsPlaceholder ? " (blank)" : "");
+    }
+
+    /// <summary>
+    /// Applies the plan one category at a time onto a running copy of the image, so
+    /// a category the API sent something unwritable for is dropped on its own
+    /// instead of taking the rest of the machine's boards down with it. Before this,
+    /// a single value that would not encode failed the whole table.
+    /// </summary>
+    private byte[] Apply(
+        NvramMap map,
+        byte[] original,
+        IReadOnlyList<SlotAssignment> plan,
+        List<(string? Category, string Reason)> failures)
+    {
+        var platform = _catalog.PlatformFor(map);
+        var data = original;
+
+        foreach (var group in plan.GroupBy(a => a.Category, StringComparer.OrdinalIgnoreCase))
         {
-            var slot = slots.FirstOrDefault(s =>
-                string.Equals(s.Label, assignment.SlotLabel, StringComparison.OrdinalIgnoreCase));
-            if (slot is null) continue;
-
-            if (slot.Initials is { } initials) writer.WriteChars(initials, assignment.Initials);
-            if (slot.Value is { } value) writer.WriteValue(value, assignment.Value);
+            try
+            {
+                // Each category writes onto a copy and is only committed whole, so a
+                // failure part-way through cannot leave a half-written record behind.
+                var writer = new NvramWriter(data, map, platform);
+                foreach (var assignment in group) Write(writer, map, assignment);
+                data = writer.Data;
+            }
+            catch (Exception ex) when (ex is ArgumentOutOfRangeException or NotSupportedException or FormatException)
+            {
+                failures.Add((group.Key, ex.Message));
+            }
         }
 
         // Once, after every field: a per-write update would checksum stale bytes.
-        writer.UpdateChecksums();
-        return writer.Data;
+        var final = new NvramWriter(data, map, platform);
+        final.UpdateChecksums();
+        return final.Data;
+    }
+
+    /// <summary>
+    /// Writes one whole record. A record is not just initials and a number: a
+    /// Medieval Madness king also has the date he was crowned and how many times he
+    /// has been, and writing only part of one leaves a new name sitting on the
+    /// previous king's date — which is exactly what the cabinet was showing.
+    /// </summary>
+    private static void Write(NvramWriter writer, NvramMap map, SlotAssignment assignment)
+    {
+        var slot = map.HighScores.Concat(map.ModeChampions).FirstOrDefault(s =>
+            string.Equals(s.Label, assignment.SlotLabel, StringComparison.OrdinalIgnoreCase));
+        if (slot is null) return;
+
+        var category = map.CategoryForSlot(slot.Label);
+
+        if (slot.Initials is { } initials) writer.WriteChars(initials, assignment.Initials);
+        if ((category?.ValueFor(slot) ?? slot.Value) is { } value) writer.WriteValue(value, assignment.Value);
+
+        foreach (var (mapKey, text) in assignment.Fields ?? new Dictionary<string, string>())
+            if (slot.Field(mapKey) is { } field) writer.WriteText(field, text);
     }
 
     private string? Verify(NvramMap map, byte[] updated, IReadOnlyList<SlotAssignment> plan)

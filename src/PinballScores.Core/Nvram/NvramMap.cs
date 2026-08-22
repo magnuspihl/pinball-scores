@@ -33,6 +33,19 @@ public sealed class ScoreSlot
 
     /// <summary>Which map key <see cref="Value"/> came from, so the value kind can be inferred.</summary>
     public string? ValueKey { get; init; }
+
+    /// <summary>
+    /// Every descriptor on the record, keyed by the map key it was read from
+    /// ("score", "counter", "nth time", "timestamp"). Most records have exactly
+    /// one, which is <see cref="Value"/>. Medieval Madness' king records have
+    /// three, and a coronation is only meaningful as all of them together, so the
+    /// ones the API doesn't rank by still have to be read and written.
+    /// Initials are excluded — they are their own field, with their own encoding.
+    /// </summary>
+    public IReadOnlyDictionary<string, Descriptor> Fields { get; init; }
+        = new Dictionary<string, Descriptor>(StringComparer.OrdinalIgnoreCase);
+
+    public Descriptor? Field(string key) => Fields.TryGetValue(key, out var d) ? d : null;
 }
 
 /// <summary>
@@ -94,12 +107,20 @@ public sealed class NvramMap
             var label = entry.Prop("label").Str() ?? entry.Prop("short_label").Str();
             if (label is null) continue;
 
+            var fields = new Dictionary<string, Descriptor>(StringComparer.OrdinalIgnoreCase);
+            foreach (var property in entry.EnumerateObject())
+            {
+                if (property.NameEquals("initials")) continue;
+                if (Descriptor.From(property.Value) is { } descriptor) fields[property.Name] = descriptor;
+            }
+
             Descriptor? value = null;
             string? valueKey = null;
             foreach (var key in ValueKeyPriority)
             {
-                value = Descriptor.From(entry.Prop(key));
-                if (value is not null) { valueKey = key; break; }
+                if (!fields.TryGetValue(key, out value)) continue;
+                valueKey = key;
+                break;
             }
 
             slots.Add(new ScoreSlot
@@ -108,6 +129,7 @@ public sealed class NvramMap
                 Initials = Descriptor.From(entry.Prop("initials")),
                 Value = value,
                 ValueKey = valueKey,
+                Fields = fields,
             });
         }
 

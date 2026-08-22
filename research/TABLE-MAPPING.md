@@ -351,10 +351,21 @@ Applying the old rule would have created 15 categories where there are 4, each
 one a leaderboard of exactly one entry, permanently frozen at whatever was in
 that slot. Same bug as the Gauntlet, three more times.
 
-And `King of the Realm` is a fifth case again: it is not ranked at all. All four
-of its slots hold `KOP` with the *same* timestamp and counters of 1, 0, 0, 0 —
-it's a dated history of the last four kings, so sorting it by value would be
-meaningless. It needs its slot order preserved.
+And `King of the Realm` is a fifth case again: it is a log, not a leaderboard.
+Completing Battle for the Kingdom crowns a player, and the ROM keeps the last
+four kings, newest first. A record is four fields — initials, a counter, an
+ordinal (`nth time`), and a `wpc_rtc` timestamp in a separate region — and the
+counter is the machine's own Battle-for-the-Kingdom completion number, which the
+DMD never shows: it numbers the kings "according to how many times BfK has been
+completed on the machine" ([rulesheet](http://www.pinball.org/rules/medievalmadness.html)).
+The committed sample is factory-seeded — all four slots `KOP`, counters 1, 0, 0,
+0, dated 2022-12-31 21:32 — which is what made this look unsorted.
+
+It is `positional` because slot order is the machine's own recency order and we
+do not re-derive it. Sorting by the counter descending happens to reproduce that
+exact order (the ROM requires king N's counter to outrank king N+1's), so the
+flag changes only how a slot with no row behind it is blanked: zero, which is
+what an untouched machine holds, rather than the ranked marker value of 1.
 
 ### So the maps now say it explicitly
 

@@ -27,12 +27,22 @@ public sealed class ScoreSubmission
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? DisplaySuffix { get; init; }
 
+    /// <summary>
+    /// Parts of the record the value cannot carry, as field name → text. Display
+    /// only, never part of the dedup key. Omitted entirely for the categories that
+    /// have none, which is all of them but Medieval Madness' coronation log.
+    /// </summary>
+    [JsonPropertyName("metadata")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, string>? Metadata { get; init; }
+
     public static ScoreSubmission From(ScoreEntry entry) => new()
     {
         Table = entry.Table,
         Category = entry.Category,
         Initials = entry.Player,
-        Value = entry.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        Value = entry.Text,
+        Metadata = entry.Metadata,
         ValueType = entry.ValueKind switch
         {
             ScoreValueKind.Counter => "counter",
@@ -91,5 +101,15 @@ public sealed class RemoteScore
     [JsonPropertyName("display_suffix")] public string? DisplaySuffix { get; init; }
     [JsonPropertyName("rank")] public int Rank { get; init; }
 
-    public long AsInt64 => long.TryParse(Value, out var v) ? v : 0;
+    /// <summary>Extra fields to write back with the record. See <see cref="ScoreSubmission.Metadata"/>.</summary>
+    [JsonPropertyName("metadata")] public IReadOnlyDictionary<string, string>? Metadata { get; init; }
+
+    /// <summary>
+    /// The value as a number. A timestamp may come back as wall-clock text rather
+    /// than an integer — it is submitted that way — so that form is accepted here
+    /// too and converted with no timezone applied, which is the same convention
+    /// <c>NvramReader.ReadClock</c> reads with. Without this a dated category would
+    /// silently write zero into the machine.
+    /// </summary>
+    public long AsInt64 => ScoreValue.Parse(Value);
 }

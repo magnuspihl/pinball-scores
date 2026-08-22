@@ -21,9 +21,17 @@ lookup from a `.nv` file to its map is just the filename.
   leaderboard) and the physical slots it owns, **best first**. Reading: take
   the slots, derive rank by sorting. Writing: sort the rows and fill the slots
   in order. `order` is `ranked` for a leaderboard, or `positional` where slot
-  order is meaningful and must not be re-sorted (Medieval Madness's King of the
-  Realm is a dated history of the last four kings, not a ranking). Slot count
+  order is the machine's own and is not re-derived (Medieval Madness's King of
+  the Realm is a dated log of the last four kings, newest first, not a ranking);
+  a positional category's empty slots are blanked with zero, which is what an
+  untouched machine holds, rather than the ranked marker value. Slot count
   is a hard ceiling on how much of a category fits on the machine.
+  `value_field` names the descriptor the value comes from when a record has
+  several and the default priority (score → counter → timestamp) picks wrong.
+  `metadata_fields` maps an API field name onto the map key of a descriptor that
+  travels with the row but is not ranked by — the king's `crowned_at` and
+  `crowned_count`. These are not decoration: a record written without them puts
+  a new name on the previous holder's date.
   `key` is what dedup and the `/api/admin/categories/{table}/{key}` endpoints
   address; `name` is ROM display text and may be prettified without moving the
   key. `value_type` is the API's enum (`score`, `counter`, `duration`,

@@ -63,6 +63,42 @@ def value_field(entry):
     raise ValueError("%r has no score or counter field" % entry.get("label"))
 
 
+def category_for(table, label):
+    for category in table.categories():
+        if label in category["slots"]:
+            return category
+    return {}
+
+
+def blank_value(category):
+    """What "no record here" is worth in this category.
+
+    A ranked ROM treats a zeroed record as invalid and restores its compiled-in
+    factory default, which is the whole reason the marker is 1 rather than 0.
+    A positional category is a log, not a leaderboard, and zero is precisely
+    what an untouched machine holds there -- Medieval Madness ships with kings
+    #2-#4 at counter 0 -- so zero is both accepted and correct, and it keeps the
+    ROM's rule that each king's counter outranks the next.
+    """
+    return 0 if category.get("order") == "positional" else MARKER_VALUE
+
+
+def spare_fields(entry, value_key):
+    """Numeric fields of a record other than the value.
+
+    Only Medieval Madness' kings have any: the ordinal behind "CROWNED FOR THE
+    SECOND TIME". Left alone, a wiped cabinet still announces a coronation that
+    the blanked initials no longer name. Clocks are skipped -- there is no zero
+    for a date the ROM would accept, and nothing renders one without an ordinal.
+    """
+    for key, field in entry.items():
+        if key in ("initials", value_key) or not isinstance(field, dict):
+            continue
+        if field.get("encoding") in (None, "wpc_rtc", "ch"):
+            continue
+        yield key, field
+
+
 def fix_stwr_107_shadow_copy(table):
     """Star Wars keeps a second, undocumented copy of the top-slot score
     (and a leading-digit-only copy of every rank) elsewhere in NVRAM, and
@@ -105,8 +141,11 @@ def reset_nvram(rom, map_path, nvram_path, out_path):
         for entry in table.map.get(group, []):
             if "initials" in entry:
                 table.write_field(entry["initials"], MARKER_INITIALS)
-            _, field = value_field(entry)
-            table.write_field(field, MARKER_VALUE)
+            value_key, field = value_field(entry)
+            category = category_for(table, entry.get("label"))
+            table.write_field(field, blank_value(category))
+            for _, spare in spare_fields(entry, value_key):
+                table.write_field(spare, 0)
             records += 1
 
     if rom == "stwr_107":
@@ -133,11 +172,17 @@ def reset_nvram(rom, map_path, nvram_path, out_path):
                 if got.strip(" "):
                     raise SystemExit("%s: %r initials read back as %r, expected blank"
                                      % (out_path, entry.get("label"), got))
-            _, field = value_field(entry)
+            value_key, field = value_field(entry)
+            expected = blank_value(category_for(check, entry.get("label")))
             got = check.read_field(field)
-            if got != MARKER_VALUE:
-                raise SystemExit("%s: %r value read back as %r"
-                                 % (out_path, entry.get("label"), got))
+            if got != expected:
+                raise SystemExit("%s: %r value read back as %r, expected %r"
+                                 % (out_path, entry.get("label"), got, expected))
+            for key, spare in spare_fields(entry, value_key):
+                got = check.read_field(spare)
+                if got != 0:
+                    raise SystemExit("%s: %r %s read back as %r, expected 0"
+                                     % (out_path, entry.get("label"), key, got))
     return records
 
 
@@ -226,7 +271,9 @@ def main():
         tables_done += len(stg_maps)
 
     print("\n%d table(s), %d record(s) total reset to %r / %d"
-          % (tables_done, total_records, MARKER_INITIALS, MARKER_VALUE))
+          " (positional categories to %r / 0, which is their own empty state)"
+          % (tables_done, total_records, MARKER_INITIALS, MARKER_VALUE,
+             MARKER_INITIALS))
 
 
 if __name__ == "__main__":
