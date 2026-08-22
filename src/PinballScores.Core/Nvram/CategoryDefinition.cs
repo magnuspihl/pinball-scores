@@ -62,6 +62,36 @@ public sealed record CategoryDefinition(
     public Descriptor? ValueFor(ScoreSlot slot) =>
         (ValueField is null ? null : slot.Field(ValueField)) ?? slot.Value;
 
+    /// <summary>
+    /// Whether a category name the API returned refers to this category.
+    ///
+    /// Deliberately not an equality check. The API keys a category by the string it
+    /// was first submitted with, and every row on the server predating this CLI was
+    /// loaded under the ROM's own label in upper case ("CASTLE CHAMPION"), while a
+    /// map identifies the same board by its key ("castle_champion"). Comparing the
+    /// two literally matched nothing but single-word categories, so write-back saw
+    /// no rows for a category and filled its slots with the blanking placeholder —
+    /// Medieval Madness lost all eleven of its champion slots that way.
+    ///
+    /// Case and separators are therefore ignored on both sides, and the display name
+    /// is accepted as well as the key. Neither spelling is ambiguous: a key is the
+    /// slug of its own name, and no two categories in a map differ only by
+    /// punctuation.
+    /// </summary>
+    public bool Matches(string? apiCategory)
+    {
+        // The API sends null for the main board; nothing else may claim those rows.
+        if (string.IsNullOrWhiteSpace(apiCategory)) return IsMainBoard;
+        if (IsMainBoard) return false;
+
+        var canonical = Canonical(apiCategory);
+        return canonical == Canonical(Key) || (Name is not null && canonical == Canonical(Name));
+    }
+
+    /// <summary>Comparable form of a category name: letters and digits, upper case.</summary>
+    private static string Canonical(string value) =>
+        string.Concat(value.Where(char.IsLetterOrDigit)).ToUpperInvariant();
+
     public static List<CategoryDefinition> Parse(JsonElement? root)
     {
         var categories = new List<CategoryDefinition>();

@@ -36,15 +36,45 @@ no desktop at all.
 ## Each run
 
 1. Read every table from every source.
-2. Submit everything found. Submission is insert-only and idempotent — the API
-   deduplicates on `(table, category, initials, value)`, so resubmitting the
-   current board every run is the normal case, not an error.
+2. Submit everything found, **and report every table that was read**, empty ones
+   included. Submission is insert-only and idempotent — the API deduplicates on
+   `(table, category, initials, value)`, so resubmitting the current board every
+   run is the normal case, not an error.
 3. Read the authoritative board back and write it onto the machines.
 
 Submission happens before write-back so a score set since the last run is banked
 before anything overwrites the machine.
 
 Step 3 is off by default — see [Write-back](#write-back).
+
+### Why the table list matters
+
+A native save file carries no timestamps, so nothing on this end can tell a score
+that was *just achieved* from one that has simply **not been overwritten yet**.
+That distinction is the difference between a new high score and the old board
+coming back, and it decides whether clearing a table is possible at all.
+
+It matters because the API's board can move *down* — a competition starts, a row
+is deleted, the database is wiped. Until write-back lands, the machine still holds
+the higher scores it had before, and step 2 posts them first. Without more
+information the server has to read those as newly achieved, and the clear is undone
+by the very run meant to apply it.
+
+The missing information is what this cabinet was showing last time it reported in,
+so the server keeps it and the run reports enough to maintain it: every board that
+was read, whether or not it held anything. A board identical to the last report
+cannot contain anything new, whatever the API currently holds — those rows come
+back as `echo` rather than `inserted`, and the run summary counts them.
+
+This is why a blanked cabinet still POSTs, with an empty `scores` array and a full
+`tables` array. "I read this board and it is empty" is what tells the server a
+clear reached the machine; silence would be indistinguishable from a run that never
+happened.
+
+The same reasoning in reverse: **a table that could not be read is left out of the
+list entirely.** A missing file, a locked file or an unmapped ROM is not an empty
+board, and reporting it as one would tell the server a clear had landed while the
+machine still holds every score.
 
 ## Data formats
 
@@ -110,9 +140,19 @@ gives a stable `key`, a display `name`, the ordered `slots` it covers, and a
 change; sending them would mean renaming a category silently splits it in two and
 strands every row stored under the old spelling.
 
-This also makes write-back trivial: rank and slot are the same axis, so assigning
-the API's board to the machine's slots is an index-for-index zip, in the slot
-order the map declares.
+**Coming back the other way, a category is matched loosely.** The API keys a
+category by the string it was first stored under, which for every row loaded
+before this CLI existed is the ROM's own label in upper case — `GET /api/scores`
+answers `CASTLE CHAMPION` where the map says `castle_champion`. Comparing the two
+literally matched nothing but single-word categories, and a category with no
+matching rows is not left alone: its slots are filled with the blanking
+placeholder, so Medieval Madness planned all eleven champion slots as empty while
+the API held scores for every one of them. `CategoryDefinition.Matches` therefore
+ignores case and separators and accepts the display name as well as the key.
+
+This still leaves write-back trivial: rank and slot are the same axis, so
+assigning the API's board to the machine's slots is an index-for-index zip, in
+the slot order the map declares.
 
 Values are always `int64`. Never floating point — single-precision silently
 perturbs anything above ~16.7 million, and did: a real `738,778,270` was recorded

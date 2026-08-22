@@ -88,8 +88,12 @@ public static class SlotPlanner
         Placeholder placeholder)
     {
         var key = category.ApiCategory;
+
+        // Matched through the category rather than by string equality: the API's own
+        // spelling of a category is whatever it was first stored under, which is not
+        // usually the map's key. See <see cref="CategoryDefinition.Matches"/>.
         var ranked = board
-            .Where(s => string.Equals(s.Category, key, StringComparison.OrdinalIgnoreCase))
+            .Where(s => category.Matches(s.Category))
             .OrderByDescending(s => s.AsInt64)
             .Take(slots.Count)
             .ToList();

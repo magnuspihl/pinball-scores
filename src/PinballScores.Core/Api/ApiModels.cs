@@ -56,6 +56,18 @@ public sealed class ScoreSubmission
 
 internal sealed class SubmitRequest
 {
+    /// <summary>
+    /// Every table read this run, including the ones holding no scores at all.
+    ///
+    /// This is what lets the server keep the board it last saw on this cabinet, and
+    /// it only works if "read it, found nothing" is distinguishable from "did not
+    /// read it". A table whose file was missing, locked or unmapped must be absent
+    /// here, because a table reported as empty is taken as evidence that a clear
+    /// reached the machine.
+    /// </summary>
+    [JsonPropertyName("tables")]
+    public required IReadOnlyList<string> Tables { get; init; }
+
     [JsonPropertyName("scores")]
     public required IReadOnlyList<ScoreSubmission> Scores { get; init; }
 }
@@ -73,6 +85,13 @@ public sealed class ScoreResult
 
     public bool WasInserted => Status == "inserted";
     public bool WasRejected => Status == "rejected";
+
+    /// <summary>
+    /// The server recognised this row as unchanged since the cabinet's last report
+    /// and did not treat it as newly achieved. Distinct from a duplicate, which is
+    /// simply a row the server already holds.
+    /// </summary>
+    public bool WasEcho => Status == "echo";
 }
 
 /// <summary>
@@ -85,6 +104,14 @@ public sealed class SubmitResponse
     [JsonPropertyName("inserted")] public int Inserted { get; init; }
     [JsonPropertyName("duplicates")] public int Duplicates { get; init; }
     [JsonPropertyName("rejected")] public int Rejected { get; init; }
+
+    /// <summary>
+    /// Rows the server held back because the machine has not changed since its last
+    /// report — the count that says a clear survived a run instead of being undone
+    /// by it. Zero from a server that does not send it.
+    /// </summary>
+    [JsonPropertyName("echoes")] public int Echoes { get; init; }
+
     [JsonPropertyName("new_tables")] public IReadOnlyList<string> NewTables { get; init; } = [];
     [JsonPropertyName("results")] public IReadOnlyList<ScoreResult> Results { get; init; } = [];
 }

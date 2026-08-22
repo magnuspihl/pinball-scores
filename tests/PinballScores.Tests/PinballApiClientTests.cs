@@ -48,7 +48,7 @@ public class PinballApiClientTests
         var handler = new StubHandler("""{"received":1,"inserted":1}""");
         using var client = Client(handler);
 
-        await client.SubmitAsync([new ScoreEntry("t", null, "MHP", 1)]);
+        await client.SubmitAsync(["t"], [new ScoreEntry("t", null, "MHP", 1)]);
 
         Assert.Equal("secret", handler.LastRequest!.Headers.GetValues("X-API-Key").Single());
         Assert.Equal("test", handler.LastRequest.Headers.GetValues("X-Source").Single());
@@ -61,7 +61,7 @@ public class PinballApiClientTests
         using var client = Client(handler);
 
         // Above 2^53 a JSON number would lose precision in a JavaScript server.
-        await client.SubmitAsync([new ScoreEntry("sttng_l7", null, "TEX", 16_000_000_000)]);
+        await client.SubmitAsync(["sttng_l7"], [new ScoreEntry("sttng_l7", null, "TEX", 16_000_000_000)]);
 
         using var sent = JsonDocument.Parse(handler.LastBody!);
         var entry = sent.RootElement.GetProperty("scores")[0];
@@ -75,7 +75,7 @@ public class PinballApiClientTests
         var handler = new StubHandler("""{"received":1,"inserted":1}""");
         using var client = Client(handler);
 
-        await client.SubmitAsync([new ScoreEntry("mm_109c", null, "FRY", 89_407_420)]);
+        await client.SubmitAsync(["mm_109c"], [new ScoreEntry("mm_109c", null, "FRY", 89_407_420)]);
 
         using var sent = JsonDocument.Parse(handler.LastBody!);
         var entry = sent.RootElement.GetProperty("scores")[0];
@@ -88,7 +88,7 @@ public class PinballApiClientTests
         var handler = new StubHandler("""{"received":4,"inserted":4}""");
         using var client = Client(handler);
 
-        await client.SubmitAsync([
+        await client.SubmitAsync(["t"], [
             new ScoreEntry("t", null, "AAA", 1, ScoreValueKind.Score),
             new ScoreEntry("t", "C", "BBB", 2, ScoreValueKind.Counter, "Castles Destroyed"),
             new ScoreEntry("t", "D", "CCC", 3, ScoreValueKind.Duration),
@@ -116,7 +116,7 @@ public class PinballApiClientTests
             """);
         using var client = Client(handler);
 
-        var response = await client.SubmitAsync([new ScoreEntry("t", null, "AAA", 10)]);
+        var response = await client.SubmitAsync(["t"], [new ScoreEntry("t", null, "AAA", 10)]);
 
         Assert.NotNull(response);
         Assert.Equal(1, response.Inserted);
@@ -126,15 +126,81 @@ public class PinballApiClientTests
     }
 
     [Fact]
-    public async Task EmptyBatchDoesNotCallTheApi()
+    public async Task ARunThatReadNothingDoesNotCallTheApi()
     {
         var handler = new StubHandler("""{"received":0}""");
         using var client = Client(handler);
 
-        var response = await client.SubmitAsync([]);
+        var response = await client.SubmitAsync([], []);
 
         Assert.NotNull(response);
         Assert.Null(handler.LastRequest);
+    }
+
+    [Fact]
+    public async Task ABlankBoardIsStillReported()
+    {
+        // The empty-scores case is not a no-op once tables are reported: "I read
+        // smanve_101 and it holds nothing" is exactly how the server learns a clear
+        // reached the machine. Staying silent here would leave it indistinguishable
+        // from a run that never happened, and the next real score would look like a
+        // resurrection of the board we just cleared.
+        var handler = new StubHandler("""{"received":0}""");
+        using var client = Client(handler);
+
+        await client.SubmitAsync(["smanve_101"], []);
+
+        Assert.NotNull(handler.LastRequest);
+        using var sent = JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal("smanve_101", sent.RootElement.GetProperty("tables")[0].GetString());
+        Assert.Empty(sent.RootElement.GetProperty("scores").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task ObservedTablesAreSentAlongsideTheScores()
+    {
+        var handler = new StubHandler("""{"received":1,"inserted":1}""");
+        using var client = Client(handler);
+
+        // A table that was read but holds no scores has to appear in tables even
+        // though nothing about it appears in scores.
+        await client.SubmitAsync(["mm_109c", "taf_l7"], [new ScoreEntry("mm_109c", null, "FRY", 89_407_420)]);
+
+        using var sent = JsonDocument.Parse(handler.LastBody!);
+        var tables = sent.RootElement.GetProperty("tables").EnumerateArray().Select(t => t.GetString()).ToList();
+        Assert.Equal(["mm_109c", "taf_l7"], tables);
+    }
+
+    [Fact]
+    public async Task EchoCountsAreReadWhenThePresentServerSendsThem()
+    {
+        var handler = new StubHandler("""
+            {"received":2,"inserted":0,"duplicates":0,"echoes":2,"rejected":0,
+             "results":[
+               {"index":0,"status":"echo","initials":"RAT","value":"130296090"},
+               {"index":1,"status":"echo","initials":"SSR","value":"150000000"}]}
+            """);
+        using var client = Client(handler);
+
+        var response = await client.SubmitAsync(["smanve_101"], [new ScoreEntry("smanve_101", null, "RAT", 130_296_090)]);
+
+        Assert.Equal(2, response!.Echoes);
+        Assert.Equal(2, response.Results.Count(r => r.WasEcho));
+        Assert.DoesNotContain(response.Results, r => r.WasInserted);
+    }
+
+    [Fact]
+    public async Task AServerWithoutEchoSupportReadsAsZeroRatherThanFailing()
+    {
+        // The CLI change ships before the API change; an older response body must
+        // still parse, and simply report no echoes.
+        var handler = new StubHandler("""{"received":1,"inserted":1,"duplicates":0,"rejected":0}""");
+        using var client = Client(handler);
+
+        var response = await client.SubmitAsync(["t"], [new ScoreEntry("t", null, "AAA", 1)]);
+
+        Assert.Equal(0, response!.Echoes);
+        Assert.Equal(1, response.Inserted);
     }
 
     [Fact]
@@ -144,7 +210,7 @@ public class PinballApiClientTests
         using var client = Client(handler);
 
         var ex = await Assert.ThrowsAsync<PinballApiException>(
-            () => client.SubmitAsync([new ScoreEntry("t", null, "AAA", 1)]));
+            () => client.SubmitAsync(["t"], [new ScoreEntry("t", null, "AAA", 1)]));
         Assert.Contains("401", ex.Message);
     }
 
