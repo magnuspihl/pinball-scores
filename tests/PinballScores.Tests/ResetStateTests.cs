@@ -76,7 +76,7 @@ public class ResetStateTests
     }
 
     [Fact]
-    public async Task AFullyBlankedCabinetSubmitsNothing()
+    public async Task AFullyBlankedCabinetSubmitsNoScoresButStillReportsItsTables()
     {
         // No exclusions needed: only mapped tables are read at all.
         var options = new SyncOptions
@@ -92,6 +92,52 @@ public class ResetStateTests
         var report = await runner.RunAsync();
 
         Assert.Equal(0, report.ScoresFound);
-        Assert.DoesNotContain(handler.Requests, r => r.Method == HttpMethod.Post);
+
+        // The blanked cabinet must still POST, carrying no scores and every table it
+        // read. That report is the whole point: it is how the server learns the clear
+        // reached the machine, so that a score appearing later is recognised as newly
+        // achieved rather than as the old board coming back.
+        var post = Assert.Single(handler.Requests, r => r.Method == HttpMethod.Post);
+        var body = handler.Bodies[handler.Requests.IndexOf(post)];
+
+        using var sent = System.Text.Json.JsonDocument.Parse(body!);
+        Assert.Empty(sent.RootElement.GetProperty("scores").EnumerateArray());
+        Assert.True(sent.RootElement.GetProperty("tables").GetArrayLength() >= 15);
+    }
+
+    [Fact]
+    public async Task AnUnreadableTableIsNotReportedAsBlank()
+    {
+        // The dangerous confusion in the other direction. A table whose file is
+        // missing, locked or unmapped is skipped, and it must not appear in tables:
+        // the server reads a reported table with no scores as "the machine's board is
+        // empty", so a failed read that claimed to be a blank board would tell it a
+        // clear had landed when the machine still holds every score.
+        var nvram = Directory.CreateTempSubdirectory("unreadable-").FullName;
+        File.WriteAllBytes(Path.Combine(nvram, "smanve_101.nv"), TestData.Nvram("smanve_101"));
+        File.WriteAllBytes(Path.Combine(nvram, "taf_l7.nv"), [1, 2, 3]); // truncated, cannot be read
+
+        // taf_l7 is a mapped table, so it is genuinely skipped for being unreadable —
+        // not quietly absent because nothing knows about it. Without this the test
+        // below would pass whatever the runner did.
+        var taf = Assert.Single(
+            new NvramScoreSource(nvram, TestData.Catalog).Extract(),
+            r => r.Table == "taf_l7");
+        Assert.NotNull(taf.Skipped);
+
+        var handler = new StubHandler("""{"received":0,"inserted":0,"duplicates":0,"rejected":0}""");
+        var runner = ScoreSyncRunner.Create(
+            new SyncOptions { NvramPath = nvram, ApiBaseUrl = "https://example.test/api" },
+            Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
+            new HttpClient(handler));
+
+        await runner.RunAsync();
+
+        var body = handler.Bodies.First(b => b is not null);
+        using var sent = System.Text.Json.JsonDocument.Parse(body!);
+        var tables = sent.RootElement.GetProperty("tables").EnumerateArray().Select(t => t.GetString()).ToList();
+
+        Assert.Contains("smanve_101", tables);
+        Assert.DoesNotContain("taf_l7", tables);
     }
 }
