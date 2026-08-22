@@ -69,7 +69,7 @@ public static class SlotPlanner
                 .OfType<ScoreSlot>()
                 .ToList();
 
-            assignments.AddRange(Assign(ordered, board, category.ApiCategory, placeholder));
+            assignments.AddRange(Assign(ordered, board, category, placeholder));
         }
 
         return assignments;
@@ -78,11 +78,14 @@ public static class SlotPlanner
     private static IEnumerable<SlotAssignment> Assign(
         IReadOnlyList<ScoreSlot> slots,
         IReadOnlyList<RemoteScore> board,
-        string? category,
+        CategoryDefinition category,
         Placeholder placeholder)
     {
+        // Matched through the category rather than by string equality: the API's own
+        // spelling of a category is whatever it was first stored under, which is not
+        // usually the map's key. See <see cref="CategoryDefinition.Matches"/>.
         var ranked = board
-            .Where(s => string.Equals(s.Category, category, StringComparison.OrdinalIgnoreCase))
+            .Where(s => category.Matches(s.Category))
             .OrderByDescending(s => s.AsInt64)
             .Take(slots.Count)
             .ToList();
@@ -90,8 +93,8 @@ public static class SlotPlanner
         for (var i = 0; i < slots.Count; i++)
         {
             yield return i < ranked.Count
-                ? new SlotAssignment(slots[i].Label, category, ranked[i].Initials, ranked[i].AsInt64)
-                : new SlotAssignment(slots[i].Label, category, placeholder.Initials, placeholder.Value, IsPlaceholder: true);
+                ? new SlotAssignment(slots[i].Label, category.ApiCategory, ranked[i].Initials, ranked[i].AsInt64)
+                : new SlotAssignment(slots[i].Label, category.ApiCategory, placeholder.Initials, placeholder.Value, IsPlaceholder: true);
         }
     }
 }

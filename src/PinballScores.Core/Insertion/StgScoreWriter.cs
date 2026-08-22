@@ -44,11 +44,7 @@ public sealed class StgScoreWriter : IScoreWriter
         var map = Find(table);
         if (map is null) return 0;
 
-        var definition = category is null
-            ? map.Categories.FirstOrDefault(c => c.IsMainBoard)
-            : map.Categories.FirstOrDefault(c => string.Equals(c.Key, category, StringComparison.OrdinalIgnoreCase));
-
-        return definition?.Slots.Count ?? 0;
+        return map.Categories.FirstOrDefault(c => c.Matches(category))?.Slots.Count ?? 0;
     }
 
     private StgMap? Find(string table) =>
@@ -110,7 +106,7 @@ public sealed class StgScoreWriter : IScoreWriter
                 .ToList();
 
             var ranked = board
-                .Where(s => string.Equals(s.Category, category.ApiCategory, StringComparison.OrdinalIgnoreCase))
+                .Where(s => category.Matches(s.Category))
                 .OrderByDescending(s => s.AsInt64)
                 .Take(slots.Count)
                 .ToList();
