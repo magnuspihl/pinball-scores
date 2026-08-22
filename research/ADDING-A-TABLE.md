@@ -276,11 +276,20 @@ slots become one unnamed category (the main board), slots sharing a base label
 (`Q Continuum #1..#4`) become one named category, and anything else gets its
 own. Usually there is nothing to do.
 
-Two cases need help:
+Three cases need help:
 
 - **A group that isn't a ranking.** Medieval Madness's `King of the Realm` is a
-  dated history of the last four kings, so sorting it by value is meaningless.
-  Add it to `POSITIONAL_CATEGORIES` and it keeps its slot order.
+  dated log of the last four kings, newest first. Add it to
+  `POSITIONAL_CATEGORIES` and it keeps its slot order; that also blanks its
+  empty slots with zero rather than the marker value, which is what an untouched
+  machine holds there.
+- **A record that is more than one number.** A king carries the date he was
+  crowned and how many times he has been, in fields beside the value. Declare
+  them in `CATEGORY_EXTRAS` as `metadata_fields` (API field name → map key) and
+  they are read, submitted and written back with the row; `value_field` pins
+  which descriptor the value itself comes from when the default priority
+  (score → counter → timestamp) would pick the wrong one. Write only part of a
+  record and the cabinet shows the new holder's name over the old holder's date.
 - **A group whose labels don't share a base** but which is really one
   leaderboard. Nothing here needs it yet; you'd extend `derive_categories`.
 

@@ -36,14 +36,30 @@ public enum ScoreValueKind
 /// Always an integer. Never floating point — single-precision silently perturbs
 /// any value above ~16.7 million, which corrupted real scores in the old CLI.
 /// </param>
+/// <param name="Metadata">
+/// Fields the record carries that the API does not rank by, as field name → text
+/// (Medieval Madness' <c>crowned_at</c> and <c>crowned_count</c>). Not part of the
+/// dedup key: two submissions of the same coronation are the same row whatever
+/// these say.
+/// </param>
+/// <param name="ValueText">
+/// How <see cref="Value"/> is written on the wire when the integer is not the
+/// honest form — a timestamp goes across as the machine's own wall-clock text,
+/// because a WPC clock has no timezone to convert from. Null means use the integer.
+/// </param>
 public sealed record ScoreEntry(
     string Table,
     string? Category,
     string Player,
     long Value,
     ScoreValueKind ValueKind = ScoreValueKind.Score,
-    string? DisplaySuffix = null)
+    string? DisplaySuffix = null,
+    IReadOnlyDictionary<string, string>? Metadata = null,
+    string? ValueText = null)
 {
+    /// <summary>The value as submitted.</summary>
+    public string Text => ValueText ?? Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
     public override string ToString()
     {
         var category = Category ?? "(main board)";
