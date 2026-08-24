@@ -11,9 +11,12 @@ on:
     tags: ['v*']
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version to build, without the leading v'
+      bump:
+        description: 'Version bump'
         required: true
+        type: choice
+        options: [patch, minor, major]
+        default: patch
 
 permissions:
   contents: write
@@ -32,12 +35,25 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
+      # Manual runs bump off the last release tag, so there's no need to check
+      # Code for the current version before running this. Tag pushes (the
+      # `git tag vX.Y.Z && git push` path) still use the pushed tag verbatim,
+      # for the rare case a specific version number is needed.
       - name: Work out the version
         id: version
         shell: bash
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            echo "value=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            latest_tag="$(git tag --list 'v*' --sort=-v:refname | head -n1)"
+            latest="${latest_tag#v}"
+            latest="${latest:-0.0.0}"
+            IFS='.' read -r major minor patch <<< "$latest"
+            case "${{ github.event.inputs.bump }}" in
+              major) major=$((major + 1)); minor=0; patch=0 ;;
+              minor) minor=$((minor + 1)); patch=0 ;;
+              patch) patch=$((patch + 1)) ;;
+            esac
+            echo "value=${major}.${minor}.${patch}" >> "$GITHUB_OUTPUT"
           else
             echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
