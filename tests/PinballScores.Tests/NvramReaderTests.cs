@@ -334,4 +334,21 @@ public class NvramReaderTests
 
         Assert.All(scores, s => Assert.Null(s.Metadata));
     }
+
+    [Fact]
+    public void DurationFieldsReadRawUntouchedByTheDisplayScale()
+    {
+        // The field is a 16-bit centisecond counter with a 0.01 display scale; the
+        // fixture's stored bytes are 0xEA60 = 60000. Applying that scale before
+        // submission turns it into 600 read as milliseconds by a server with no
+        // default-seconds interpretation — six hundred thousand times too small.
+        var ring = TestData.ReaderFor("lotr").ReadScores("lotr")
+            .Single(s => s.Category == "destroy_ring_champion");
+
+        Assert.Equal("EYE", ring.Player);
+        Assert.Equal(60_000, ring.Value);
+        Assert.Equal(ScoreValueKind.Duration, ring.ValueKind);
+        Assert.Equal("cs", ring.ValueUnit);
+        Assert.Equal("60000", ring.Text);
+    }
 }

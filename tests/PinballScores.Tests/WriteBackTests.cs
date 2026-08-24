@@ -154,6 +154,37 @@ public class WriteBackTests
     }
 
     [Fact]
+    public async Task DurationWriteBackRestoresTheRawCentisecondFieldFromCanonicalMilliseconds()
+    {
+        // Full round trip of the bug this fixes: the API always holds a duration in
+        // milliseconds; write-back must land the exact raw centisecond integer the
+        // field stores, not that millisecond figure scaled as if it were seconds.
+        var dir = CopyNvram("lotr");
+
+        var result = await new NvramScoreWriter(TestData.Catalog, dir).WriteAsync("lotr",
+        [
+            new RemoteScore
+            {
+                Category = "destroy_ring_champion",
+                Initials = "EYE",
+                Value = "58140",
+                ValueType = "duration",
+                NativeUnit = "cs",
+            },
+        ]);
+
+        Assert.True(result.Applied, result.Skipped);
+
+        var ring = new NvramScoreSource(dir, TestData.Catalog).Extract().Single()
+            .Scores.Single(s => s.Category == "destroy_ring_champion");
+
+        Assert.Equal("EYE", ring.Player);
+        Assert.Equal(5_814, ring.Value);
+        Assert.Equal("cs", ring.ValueUnit);
+        Assert.Equal("5814", ring.Text);
+    }
+
+    [Fact]
     public async Task StarWarsIsRefusedBecauseItsShadowCopyUndoesTheWrite()
     {
         // stwr_107's boot code restores the whole table from an undocumented shadow

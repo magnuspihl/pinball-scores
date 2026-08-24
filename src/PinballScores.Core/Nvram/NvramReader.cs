@@ -67,22 +67,25 @@ public sealed class NvramReader
         var descriptor = category?.ValueFor(slot) ?? slot.Value;
 
         long value = 0;
-        var kind = ScoreValueKind.Counter;
+        var kind = category?.ValueKind ?? ScoreValueKind.Counter;
         string? text = null;
 
         if (descriptor is { } field)
         {
-            var raw = ReadValue(field);
+            if (category is null) kind = KindOf(slot.ValueKey, field);
+
+            // A duration field's scale (e.g. 0.01 to display seconds) exists for the
+            // ROM's own on-glass text, not for the wire: rounding through it here is
+            // exactly the precision loss the millisecond canonical storage exists to
+            // avoid, so a duration reads its field's raw integer untouched.
+            var raw = kind == ScoreValueKind.Duration ? ReadRawValue(field) : ReadValue(field);
             if (raw is null) return null;
             value = raw.Value;
-            kind = KindOf(slot.ValueKey, field);
             text = Text(field, raw.Value);
         }
 
-        if (category is not null) kind = category.ValueKind;
-
         return new ScoreEntry(tableId, apiCategory, initials.Trim(), value, kind,
-            Clean(descriptor?.Suffix), ReadMetadata(slot, category), text);
+            Clean(descriptor?.Suffix), ReadMetadata(slot, category), text, category?.ValueUnit);
     }
 
     /// <summary>
@@ -167,6 +170,21 @@ public sealed class NvramReader
 
         return value;
     }
+
+    /// <summary>
+    /// Decodes a duration field's literal stored integer, with none of
+    /// <see cref="ReadValue"/>'s scale, offset or unit conversion applied. That
+    /// arithmetic exists to turn the field into seconds for display; a duration
+    /// travels the wire in its own native unit instead, so applying it here would
+    /// just be a second, lossier rounding on top of the one this fixes.
+    /// </summary>
+    private long? ReadRawValue(Descriptor descriptor) => descriptor.Encoding.ToLowerInvariant() switch
+    {
+        "int" or "bits" or "bool" => ReadInt(descriptor),
+        "bcd" => ReadBcd(descriptor),
+        "wpc_rtc" => ReadClock(descriptor),
+        _ => null,
+    };
 
     private long ReadInt(Descriptor descriptor)
     {

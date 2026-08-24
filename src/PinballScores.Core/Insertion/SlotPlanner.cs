@@ -102,7 +102,11 @@ public static class SlotPlanner
         {
             if (i < ranked.Count)
             {
-                yield return new SlotAssignment(slots[i].Label, key, ranked[i].Initials, ranked[i].AsInt64,
+                // A duration score comes back as milliseconds regardless of what unit
+                // it was submitted in; NativeValue converts to the field's own unit
+                // (centiseconds for lotr) so the slot gets its raw stored integer back
+                // rather than a value scaled as if it were seconds.
+                yield return new SlotAssignment(slots[i].Label, key, ranked[i].Initials, ranked[i].NativeValue,
                     Fields: Fields(category, ranked[i]));
                 continue;
             }
