@@ -55,6 +55,55 @@ public class SlotPlannerTests
     }
 
     [Fact]
+    public void CategoriesAreMatchedInTheApisOwnSpelling()
+    {
+        // What the live API returns for a category is the label it was first stored
+        // under — "SPIDER CHAMPION", not the map's "spider_champion". Compared
+        // literally, no row matched and every category slot on the machine was
+        // planned as a blank.
+        var map = TestData.Catalog.Find("smanve_101")!;
+        var board = new[] { Score("SPIDER CHAMPION", "ZZZ", 42) };
+
+        var plan = SlotPlanner.Plan(map, board).ToList();
+
+        var spider = Assert.Single(plan, a => a.Category == "spider_champion");
+        Assert.Equal("ZZZ", spider.Initials);
+        Assert.False(spider.IsPlaceholder);
+    }
+
+    [Fact]
+    public void MedievalMadnessFillsEveryChampionSlotFromTheApiBoard()
+    {
+        // Its eleven champion slots are the largest set of category slots on the
+        // cabinet, and all eleven were being blanked.
+        var map = TestData.Catalog.Find("mm_109c")!;
+        var board = new[]
+        {
+            Score(null, "OLE", 102_283_300),
+            Score("CASTLE CHAMPION", "IDA", 29),
+            Score("JOUST CHAMPION", "JKB", 32),
+            Score("CATAPULT CHAMPION", "AND", 19),
+            Score("PEASANT CHAMPION", "RUN", 8),
+            Score("DAMSEL CHAMPION", "TBO", 30),
+            Score("TROLL CHAMPION", "JKB", 32),
+            Score("MADNESS CHAMPION", "LSB", 14_614_120),
+            Score("KING OF THE REALM", "KAS", 16),
+            Score("KING OF THE REALM", "VIB", 14),
+            Score("KING OF THE REALM", "AND", 11),
+            Score("KING OF THE REALM", "PTR", 8),
+        };
+
+        var plan = SlotPlanner.Plan(map, board).Where(a => a.Category is not null).ToList();
+
+        Assert.Equal(11, plan.Count);
+        Assert.All(plan, a => Assert.False(a.IsPlaceholder, $"{a.SlotLabel} was blanked"));
+        Assert.Equal("IDA", Assert.Single(plan, a => a.SlotLabel == "Castle Champion").Initials);
+        Assert.Equal(14_614_120, Assert.Single(plan, a => a.SlotLabel == "Madness Champion").Value);
+        Assert.Equal("KAS", Assert.Single(plan, a => a.SlotLabel == "King of the Realm #1").Initials);
+        Assert.Equal("PTR", Assert.Single(plan, a => a.SlotLabel == "King of the Realm #4").Initials);
+    }
+
+    [Fact]
     public void ShortBoardBlanksTheRemainingSlots()
     {
         var map = TestData.Catalog.Find("smanve_101")!;

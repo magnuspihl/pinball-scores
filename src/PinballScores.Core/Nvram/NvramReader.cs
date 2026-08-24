@@ -59,26 +59,61 @@ public sealed class NvramReader
         if (string.IsNullOrWhiteSpace(initials)) return null;
         if (CategoryRules.IsUnusedSlot(initials)) return null;
 
-        long value = 0;
-        var kind = ScoreValueKind.Counter;
-
-        if (slot.Value is { } descriptor)
-        {
-            var raw = ReadValue(descriptor);
-            if (raw is null) return null;
-            value = raw.Value;
-            kind = KindOf(slot.ValueKey, descriptor);
-        }
-
-        // The map's own rollup decides the category and how the value reads. Falling
-        // back to a slug keeps a slot the map forgot to place from vanishing; a test
-        // asserts every bundled map places all of its slots.
+        // The map's own rollup decides the category, which field holds the value and
+        // how that value reads. Falling back to a slug keeps a slot the map forgot to
+        // place from vanishing; a test asserts every bundled map places all of its slots.
         var category = _map.CategoryForSlot(slot.Label);
         var apiCategory = category is not null ? category.ApiCategory : CategoryRules.Slugify(slot.Label);
+        var descriptor = category?.ValueFor(slot) ?? slot.Value;
+
+        long value = 0;
+        var kind = ScoreValueKind.Counter;
+        string? text = null;
+
+        if (descriptor is { } field)
+        {
+            var raw = ReadValue(field);
+            if (raw is null) return null;
+            value = raw.Value;
+            kind = KindOf(slot.ValueKey, field);
+            text = Text(field, raw.Value);
+        }
+
         if (category is not null) kind = category.ValueKind;
 
-        return new ScoreEntry(tableId, apiCategory, initials.Trim(), value, kind, Clean(slot.Value?.Suffix));
+        return new ScoreEntry(tableId, apiCategory, initials.Trim(), value, kind,
+            Clean(descriptor?.Suffix), ReadMetadata(slot, category), text);
     }
+
+    /// <summary>
+    /// The extra fields a category declared, as API field name → text. These are the
+    /// parts of a record the API does not rank by but cannot reconstruct: without
+    /// them a write-back leaves a king's name over the previous king's date.
+    /// </summary>
+    private IReadOnlyDictionary<string, string>? ReadMetadata(ScoreSlot slot, CategoryDefinition? category)
+    {
+        if (category is null || category.Metadata.Count == 0) return null;
+
+        var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, mapKey) in category.Metadata)
+        {
+            if (slot.Field(mapKey) is not { } descriptor) continue;
+            if (ReadValue(descriptor) is not { } raw) continue;
+            metadata[name] = Text(descriptor, raw);
+        }
+
+        return metadata.Count == 0 ? null : metadata;
+    }
+
+    /// <summary>
+    /// How a field goes across the wire. A clock is sent as the wall-clock text the
+    /// machine itself displays — a WPC RTC has no timezone, so anything that looks
+    /// like an instant invites a conversion that silently shifts the date.
+    /// </summary>
+    private static string Text(Descriptor descriptor, long value) =>
+        descriptor.Encoding.Equals("wpc_rtc", StringComparison.OrdinalIgnoreCase)
+            ? ScoreValue.ClockText(value)
+            : value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     private static string? Clean(string? suffix) =>
         string.IsNullOrWhiteSpace(suffix) ? null : suffix.Trim();

@@ -83,10 +83,27 @@ public sealed class NvramWriter
         {
             "bcd" => EncodeBcd(value, offsets.Count),
             "int" => EncodeInt(value, offsets.Count, LittleEndian(descriptor)),
+            "wpc_rtc" => EncodeClock(value, offsets.Count),
             _ => throw new NotSupportedException($"writing '{descriptor.Encoding}' fields is not implemented"),
         };
 
         Apply(offsets, bytes);
+    }
+
+    /// <summary>
+    /// Writes a field from the text the API holds it as: an integer, or the
+    /// wall-clock form a timestamp is submitted in. Both end up as the same
+    /// no-timezone-applied instant <see cref="NvramReader.ReadClock"/> produced.
+    /// </summary>
+    public void WriteText(Descriptor descriptor, string text)
+    {
+        if (descriptor.Encoding.Equals("ch", StringComparison.OrdinalIgnoreCase))
+        {
+            WriteChars(descriptor, text);
+            return;
+        }
+
+        WriteValue(descriptor, Models.ScoreValue.Parse(text));
     }
 
     /// <summary>Recomputes every checksum. Must run after the last field is written.</summary>
@@ -107,6 +124,35 @@ public sealed class NvramWriter
         var bytes = new byte[width];
         for (var i = 0; i < width; i++)
             bytes[i] = (byte)(((text[i * 2] - '0') << 4) | (text[i * 2 + 1] - '0'));
+        return bytes;
+    }
+
+    /// <summary>
+    /// WPC real-time clock: 2-byte year, month, day, weekday, hour, minute.
+    ///
+    /// The weekday is stored rather than derived, and the machine's own convention
+    /// is Sunday=1 through Saturday=7 — checked against the <c>last_played</c> stamp
+    /// in five committed cabinet dumps (ij_l7, mm_109c, sttng_l7, t2_l8, taf_l7),
+    /// all of which agree. Medieval Madness' factory-seeded king slots #2-#4 store
+    /// weekday 8, which is not a day at all: that is seed data, not a crowning.
+    /// </summary>
+    private static byte[] EncodeClock(long value, int width)
+    {
+        if (width < 7)
+            throw new ArgumentOutOfRangeException(nameof(value), $"a wpc_rtc field needs 7 bytes, not {width}");
+
+        var moment = DateTimeOffset.FromUnixTimeSeconds(value).UtcDateTime;
+        if (moment.Year is < 1900 or > 2999)
+            throw new ArgumentOutOfRangeException(nameof(value), $"{moment:yyyy-MM-dd} is outside the clock's range");
+
+        var bytes = new byte[width];
+        bytes[0] = (byte)(moment.Year >> 8);
+        bytes[1] = (byte)(moment.Year & 0xFF);
+        bytes[2] = (byte)moment.Month;
+        bytes[3] = (byte)moment.Day;
+        bytes[4] = (byte)((int)moment.DayOfWeek + 1);
+        bytes[5] = (byte)moment.Hour;
+        bytes[6] = (byte)moment.Minute;
         return bytes;
     }
 

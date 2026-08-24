@@ -46,13 +46,25 @@ public sealed class PinballApiClient : IDisposable
     /// could not be delivered at all, as distinct from a delivered batch whose rows
     /// were duplicates or rejections.
     /// </summary>
+    /// <param name="observedTables">
+    /// Every table read this run, empty ones included. Sent even when there are no
+    /// scores at all: a cabinet reporting "I read these eighteen boards and they are
+    /// blank" is how the server learns a clear reached the machine, and a run that
+    /// silently posted nothing would look identical to a run that never happened.
+    /// </param>
     public async Task<SubmitResponse?> SubmitAsync(
+        IReadOnlyList<string> observedTables,
         IReadOnlyList<ScoreEntry> scores,
         CancellationToken cancellationToken = default)
     {
-        if (scores.Count == 0) return new SubmitResponse();
+        // Only a run that read nothing whatsoever has nothing to say.
+        if (observedTables.Count == 0 && scores.Count == 0) return new SubmitResponse();
 
-        var request = new SubmitRequest { Scores = [.. scores.Select(ScoreSubmission.From)] };
+        var request = new SubmitRequest
+        {
+            Tables = observedTables,
+            Scores = [.. scores.Select(ScoreSubmission.From)],
+        };
         using var response = await _http.PostAsJsonAsync("scores", request, Json, cancellationToken)
             .ConfigureAwait(false);
 

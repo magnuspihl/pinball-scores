@@ -27,12 +27,22 @@ public sealed class ScoreSubmission
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? DisplaySuffix { get; init; }
 
+    /// <summary>
+    /// Parts of the record the value cannot carry, as field name → text. Display
+    /// only, never part of the dedup key. Omitted entirely for the categories that
+    /// have none, which is all of them but Medieval Madness' coronation log.
+    /// </summary>
+    [JsonPropertyName("metadata")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, string>? Metadata { get; init; }
+
     public static ScoreSubmission From(ScoreEntry entry) => new()
     {
         Table = entry.Table,
         Category = entry.Category,
         Initials = entry.Player,
-        Value = entry.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        Value = entry.Text,
+        Metadata = entry.Metadata,
         ValueType = entry.ValueKind switch
         {
             ScoreValueKind.Counter => "counter",
@@ -46,6 +56,18 @@ public sealed class ScoreSubmission
 
 internal sealed class SubmitRequest
 {
+    /// <summary>
+    /// Every table read this run, including the ones holding no scores at all.
+    ///
+    /// This is what lets the server keep the board it last saw on this cabinet, and
+    /// it only works if "read it, found nothing" is distinguishable from "did not
+    /// read it". A table whose file was missing, locked or unmapped must be absent
+    /// here, because a table reported as empty is taken as evidence that a clear
+    /// reached the machine.
+    /// </summary>
+    [JsonPropertyName("tables")]
+    public required IReadOnlyList<string> Tables { get; init; }
+
     [JsonPropertyName("scores")]
     public required IReadOnlyList<ScoreSubmission> Scores { get; init; }
 }
@@ -63,6 +85,13 @@ public sealed class ScoreResult
 
     public bool WasInserted => Status == "inserted";
     public bool WasRejected => Status == "rejected";
+
+    /// <summary>
+    /// The server recognised this row as unchanged since the cabinet's last report
+    /// and did not treat it as newly achieved. Distinct from a duplicate, which is
+    /// simply a row the server already holds.
+    /// </summary>
+    public bool WasEcho => Status == "echo";
 }
 
 /// <summary>
@@ -75,6 +104,14 @@ public sealed class SubmitResponse
     [JsonPropertyName("inserted")] public int Inserted { get; init; }
     [JsonPropertyName("duplicates")] public int Duplicates { get; init; }
     [JsonPropertyName("rejected")] public int Rejected { get; init; }
+
+    /// <summary>
+    /// Rows the server held back because the machine has not changed since its last
+    /// report — the count that says a clear survived a run instead of being undone
+    /// by it. Zero from a server that does not send it.
+    /// </summary>
+    [JsonPropertyName("echoes")] public int Echoes { get; init; }
+
     [JsonPropertyName("new_tables")] public IReadOnlyList<string> NewTables { get; init; } = [];
     [JsonPropertyName("results")] public IReadOnlyList<ScoreResult> Results { get; init; } = [];
 }
@@ -91,5 +128,15 @@ public sealed class RemoteScore
     [JsonPropertyName("display_suffix")] public string? DisplaySuffix { get; init; }
     [JsonPropertyName("rank")] public int Rank { get; init; }
 
-    public long AsInt64 => long.TryParse(Value, out var v) ? v : 0;
+    /// <summary>Extra fields to write back with the record. See <see cref="ScoreSubmission.Metadata"/>.</summary>
+    [JsonPropertyName("metadata")] public IReadOnlyDictionary<string, string>? Metadata { get; init; }
+
+    /// <summary>
+    /// The value as a number. A timestamp may come back as wall-clock text rather
+    /// than an integer — it is submitted that way — so that form is accepted here
+    /// too and converted with no timezone applied, which is the same convention
+    /// <c>NvramReader.ReadClock</c> reads with. Without this a dated category would
+    /// silently write zero into the machine.
+    /// </summary>
+    public long AsInt64 => ScoreValue.Parse(Value);
 }

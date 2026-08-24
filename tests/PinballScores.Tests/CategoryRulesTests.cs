@@ -69,6 +69,64 @@ public class CategoryDefinitionTests
         Assert.Equal(ScoreValueKind.Score, map.Categories.Single(c => c.IsMainBoard).ValueKind);
     }
 
+    [Theory]
+    // The API's own spelling: it keys a category by the string first submitted for
+    // it, and the rows loaded before this CLI existed carry the ROM's upper-case
+    // label rather than the map's key.
+    [InlineData("SPIDER CHAMPION")]
+    [InlineData("Spider Champion")]
+    [InlineData("spider_champion")]
+    [InlineData("SPIDER_CHAMPION")]
+    public void ApiSpellingsOfACategoryAllResolveToIt(string apiCategory)
+    {
+        var spider = TestData.Catalog.Find("smanve_101")!.Categories.Single(c => c.Key == "spider_champion");
+
+        Assert.True(spider.Matches(apiCategory));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("BEST BONUS CHAMPION")]
+    public void ACategoryDoesNotClaimAnotherBoardsRows(string? apiCategory)
+    {
+        var spider = TestData.Catalog.Find("smanve_101")!.Categories.Single(c => c.Key == "spider_champion");
+
+        Assert.False(spider.Matches(apiCategory));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void TheMainBoardTakesTheRowsWithNoCategory(string? apiCategory)
+    {
+        var map = TestData.Catalog.Find("smanve_101")!;
+
+        Assert.True(map.Categories.Single(c => c.IsMainBoard).Matches(apiCategory));
+    }
+
+    [Fact]
+    public void TheMainBoardTakesOnlyThoseRows()
+    {
+        var map = TestData.Catalog.Find("smanve_101")!;
+
+        Assert.False(map.Categories.Single(c => c.IsMainBoard).Matches("SPIDER CHAMPION"));
+    }
+
+    [Fact]
+    public void NoTwoCategoriesInAMapAreToldApartOnlyByPunctuation()
+    {
+        // Matching ignores case and separators, so two categories that differ only
+        // in those would both claim the same rows.
+        foreach (var rom in TestData.Catalog.KnownRoms)
+        {
+            var map = TestData.Catalog.Find(rom)!;
+
+            foreach (var category in map.Categories.Where(c => !c.IsMainBoard))
+                Assert.Single(map.Categories, c => c.Matches(category.ApiCategory));
+        }
+    }
+
     [Fact]
     public void EveryBundledMapPlacesEverySlotInACategory()
     {

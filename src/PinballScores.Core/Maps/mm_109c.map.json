@@ -108,7 +108,12 @@
           "King of the Realm #3",
           "King of the Realm #4"
         ],
-        "value_type": "counter"
+        "value_type": "counter",
+        "value_field": "counter",
+        "metadata_fields": {
+          "crowned_at": "timestamp",
+          "crowned_count": "nth time"
+        }
       }
     ],
     "initials_padding": "none",

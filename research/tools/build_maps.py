@@ -262,6 +262,29 @@ POSITIONAL_CATEGORIES = {
     "mm_109c": {"King of the Realm"},
 }
 
+# Categories whose records are more than one number.  `value_field` pins which
+# descriptor the API's value comes from when the record has several and the
+# default priority (score -> counter -> timestamp) would pick the wrong one;
+# `metadata_fields` maps an API field name onto the map key of a descriptor that
+# travels with the row but is not ranked by.
+#
+# Medieval Madness' kings are the only case so far.  A king record is a
+# coronation: who, which Battle-for-the-Kingdom completion it was (the counter),
+# when, and how many times that player has been crowned.  Writing back only the
+# first two leaves the new king's name sitting on the old king's date, which is
+# what the cabinet was showing -- the extra fields are not decoration.
+CATEGORY_EXTRAS = {
+    "mm_109c": {
+        "King of the Realm": {
+            "value_field": "counter",
+            "metadata_fields": {
+                "crowned_at": "timestamp",
+                "crowned_count": "nth time",
+            },
+        },
+    },
+}
+
 RANK_SUFFIX = re.compile(r"^(.*?)[ ]*#?(\d+)$")
 
 # How a platform pads the initials field.  This decides what may be stripped
@@ -315,7 +338,7 @@ def category_key(name):
     return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
 
 
-def derive_categories(game_map, positional=()):
+def derive_categories(game_map, positional=(), extras=None):
     """Group a map's records into the categories the score API stores.
 
     The main leaderboard is one category with no name; every other group of
@@ -351,6 +374,7 @@ def derive_categories(game_map, positional=()):
         suffix = suffix_for(set(slots))
         if suffix:
             category["display_suffix"] = suffix
+        category.update((extras or {}).get(name, {}))
         return category
 
     main = [e["label"] for e in game_map.get("high_scores", [])]
@@ -436,7 +460,7 @@ def build_upstream_table(rom, spec, upstream_root):
         if key not in ordered:
             ordered[key] = value
     ordered["_pinballscores"]["categories"] = derive_categories(
-        ordered, POSITIONAL_CATEGORIES.get(rom, ()))
+        ordered, POSITIONAL_CATEGORIES.get(rom, ()), CATEGORY_EXTRAS.get(rom))
     return stamp(ordered)
 
 
@@ -498,7 +522,7 @@ def build_sam_table(rom, spec):
         game_map["mode_champions"] = champions
     game_map["checksum16"] = checksums
     game_map["_pinballscores"]["categories"] = derive_categories(
-        game_map, POSITIONAL_CATEGORIES.get(rom, ()))
+        game_map, POSITIONAL_CATEGORIES.get(rom, ()), CATEGORY_EXTRAS.get(rom))
     return stamp(game_map)
 
 
