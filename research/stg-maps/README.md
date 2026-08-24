@@ -14,17 +14,27 @@ These maps exist because the naming is per-table-script convention rather than
 a standard. `HighScore3` pairs with `HighScore3Name` on all three tables, but
 champion fields follow no rank pattern (`HighScoreXandar` /
 `HighScoreXandarName`), and the number of ranked slots varies (4 on Deadpool,
-5 on Guardians, 16 on Game of Thrones).
+5 on Guardians and on Game of Thrones).
 
-Two things to know:
+Three things to know:
 
-- **Champion labels are the table script's own field names, verbatim** — `CB`,
-  `IMMO`, `Xandar`. A prettier display name would be a guess, and because the
-  label becomes the category key in the score database, correcting a guess
-  later would split one category into two.
-- **Slot number is not rank.** These table scripts do not necessarily re-sort
-  on write; Game of Thrones currently holds 152,329,750 in slot 9 and
-  4,000,000 in slot 13. Derive rank by sorting the values you read.
+- **The key is identity; the label is only display text.** A champion's key is
+  the slugified label by default, so renaming a label in a map renames the
+  category and strands the rows already stored under the old key. When a table's
+  real titles are learned after it has been submitting — Guardians' `CB` turned
+  out to be "Cherry Bomb Multiball Champion" — declare the key explicitly as the
+  third element of the layout entry and let the label change freely. Display
+  names can also just be set on the website, which the CLI never reads.
+- **A numbered stream is not necessarily a rank.** Game of Thrones names all
+  fifteen of its records `HighScoreN`, but only 1–5 are the ranked board:
+  `HighScore6`–`HighScore15` are one-slot champions that the attract mode names
+  (Stark, Baratheon, … Iron Throne), and `HighScore16` is unused. Nothing in the
+  file says so, so the layout is declared in `SLOT_LAYOUTS` in
+  `../tools/build_stg_maps.py`; it was mapped on the cabinet by writing a
+  sentinel into each slot and reading the name it appeared under.
+- **Slot number is not rank on the board either.** These table scripts do not
+  necessarily re-sort on write — Guardians holds its best score in slot 5 —
+  so derive rank by sorting the values you read.
 
 Like the NVRAM maps, each file carries a `_pinballscores.categories` block
 giving the category → ordered-slots rollup the score API stores: the numbered

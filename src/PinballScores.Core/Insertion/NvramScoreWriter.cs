@@ -62,6 +62,9 @@ public sealed class NvramScoreWriter : IScoreWriter
         return definition?.Slots.Count ?? 0;
     }
 
+    public int TotalSlotCount(string table) =>
+        _catalog.Find(table)?.Categories.Sum(c => c.Slots.Count) ?? 0;
+
     public Task<WriteResult> WriteAsync(
         string table,
         IReadOnlyList<RemoteScore> board,

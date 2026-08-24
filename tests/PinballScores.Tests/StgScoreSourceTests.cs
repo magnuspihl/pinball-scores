@@ -77,6 +77,49 @@ public class StgScoreSourceTests
     }
 
     [Fact]
+    public void GameOfThronesNumberedSlotsAreNotOneBoard()
+    {
+        // The table names every record HighScoreN, but only the first five are the
+        // ranked board — HighScore6-15 are one-slot champions that attract mode
+        // lists by name. Reading them as ranks 6-15 filed ten champion records as
+        // main-board scores, which is what this guards.
+        var got = Read().Single(r => r.Table == "gameofthrones");
+
+        Assert.Equal(5, got.Scores.Count(s => s.Category is null));
+
+        // HighScore9, the Greyjoy record: 152,329,750 sits below 200,000,000 in
+        // slot 5, so as a ranked board it would have to be slot 6, not slot 9.
+        var greyjoy = Assert.Single(got.Scores, s => s.Category == "greyjoy_champion");
+        Assert.Equal("MHP", greyjoy.Player);
+        Assert.Equal(152_329_750, greyjoy.Value);
+
+        Assert.Contains(got.Scores, s => s is { Category: "targaryen_champion", Player: "LAU", Value: 17_433_810 });
+        Assert.Contains(got.Scores, s => s is { Category: "lannister_champion", Player: "MK", Value: 10_825_440 });
+    }
+
+    [Fact]
+    public void TheGrandChampionIsTheTopSlotOfTheMainBoard()
+    {
+        // Same call as Stern SAM: it is slot 0 of one sorted list, not a category of
+        // its own, so it must not become a second row for one achievement.
+        var got = Read().Single(r => r.Table == "gameofthrones");
+
+        Assert.Contains(got.Scores, s => s is { Category: null, Value: 750_000_000 });
+        Assert.DoesNotContain(got.Scores, s => s.Category == "grand_champion");
+    }
+
+    [Fact]
+    public void GameOfThronesSixteenthSlotIsNeverRead()
+    {
+        // HighScore16 exists in VPReg.stg but the table never uses it, so it is
+        // deliberately unmapped: nothing reads it and write-back leaves it alone.
+        var got = Read().Single(r => r.Table == "gameofthrones");
+
+        Assert.Equal(15, got.Scores.Count);
+        Assert.DoesNotContain(got.Scores, s => s.Value == 1_000_000);
+    }
+
+    [Fact]
     public void MissingFileIsNotAnError()
     {
         var results = new StgScoreSource("/nonexistent/VPReg.stg", TestData.Catalog).Extract().ToList();

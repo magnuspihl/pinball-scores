@@ -2,6 +2,11 @@
   "_fileformat": "pinballscores-stg-0.1",
   "_notes": [
     "Guardians of the Galaxy (VPX)",
+    "Unlike Game of Thrones, the numbered slots really are one board --",
+    "but its top slot is the Grand Champion, and the champion streams are",
+    "named rather than numbered. Labels are the attract mode's titles,",
+    "read off the cabinet 2026-08-24; the keys stay as they were first",
+    "mapped from the stream names, because they are already in the API.",
     "Visual Pinball X native table. State lives in User/VPReg.stg, an OLE",
     "Compound File: one storage per table, one stream per setting, each stream",
     "holding a UTF-16LE string. Scores are decimal strings, initials are plain",
@@ -28,48 +33,48 @@
         "name": null,
         "order": "ranked",
         "slots": [
+          "Grand Champion",
           "High Score #1",
           "High Score #2",
           "High Score #3",
-          "High Score #4",
-          "High Score #5"
+          "High Score #4"
         ]
       },
       {
         "key": "cb",
-        "name": "CB",
+        "name": "Cherry Bomb Multiball Champion",
         "order": "ranked",
         "slots": [
-          "CB"
+          "Cherry Bomb Multiball Champion"
         ]
       },
       {
         "key": "combo",
-        "name": "Combo",
+        "name": "Combo Champion",
         "order": "ranked",
         "slots": [
-          "Combo"
+          "Combo Champion"
         ],
         "value_type": "counter"
       },
       {
         "key": "immo",
-        "name": "IMMO",
+        "name": "Immolation Initiative Champion",
         "order": "ranked",
         "slots": [
-          "IMMO"
+          "Immolation Initiative Champion"
         ]
       },
       {
         "key": "xandar",
-        "name": "Xandar",
+        "name": "Save Xandar Champion",
         "order": "ranked",
         "slots": [
-          "Xandar"
+          "Save Xandar Champion"
         ]
       }
     ],
-    "map_version": "9c608ef69e32"
+    "map_version": "06b91c9059c8"
   },
   "_metadata": {
     "version": 1,
@@ -78,7 +83,7 @@
   },
   "high_scores": [
     {
-      "label": "High Score #1",
+      "label": "Grand Champion",
       "initials": {
         "stream": "HighScore1Name",
         "encoding": "string"
@@ -89,7 +94,7 @@
       }
     },
     {
-      "label": "High Score #2",
+      "label": "High Score #1",
       "initials": {
         "stream": "HighScore2Name",
         "encoding": "string"
@@ -100,7 +105,7 @@
       }
     },
     {
-      "label": "High Score #3",
+      "label": "High Score #2",
       "initials": {
         "stream": "HighScore3Name",
         "encoding": "string"
@@ -111,7 +116,7 @@
       }
     },
     {
-      "label": "High Score #4",
+      "label": "High Score #3",
       "initials": {
         "stream": "HighScore4Name",
         "encoding": "string"
@@ -122,7 +127,7 @@
       }
     },
     {
-      "label": "High Score #5",
+      "label": "High Score #4",
       "initials": {
         "stream": "HighScore5Name",
         "encoding": "string"
@@ -135,8 +140,8 @@
   ],
   "mode_champions": [
     {
-      "label": "CB",
-      "_note": "field name taken verbatim from the table script",
+      "label": "Cherry Bomb Multiball Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScoreCBName",
         "encoding": "string"
@@ -147,8 +152,8 @@
       }
     },
     {
-      "label": "Combo",
-      "_note": "field name taken verbatim from the table script",
+      "label": "Combo Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScoreComboName",
         "encoding": "string"
@@ -159,8 +164,8 @@
       }
     },
     {
-      "label": "IMMO",
-      "_note": "field name taken verbatim from the table script",
+      "label": "Immolation Initiative Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScoreIMMOName",
         "encoding": "string"
@@ -171,8 +176,8 @@
       }
     },
     {
-      "label": "Xandar",
-      "_note": "field name taken verbatim from the table script",
+      "label": "Save Xandar Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScoreXandarName",
         "encoding": "string"

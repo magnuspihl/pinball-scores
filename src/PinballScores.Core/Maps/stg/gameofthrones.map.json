@@ -2,6 +2,15 @@
   "_fileformat": "pinballscores-stg-0.1",
   "_notes": [
     "Game of Thrones (VPX)",
+    "Slots are NOT ranks. HighScore1-5 are one ranked board (the Grand",
+    "Champion is its top slot, as on Stern SAM); HighScore6-15 are ten",
+    "separate one-slot champion records that attract mode names. The",
+    "structure shows in the factory defaults: slots 1-5 seed at",
+    "750M/500M/400M/300M/200M, slots 6-15 at a flat (17-n) million, and",
+    "beaten slots sit interleaved with untouched ones (6, 8, 9 and 12 in",
+    "the 2026-08 dumps) which a sorted board cannot produce.",
+    "HighScore16 exists but the table never uses it, so it is left",
+    "unmapped and write-back does not touch it.",
     "Visual Pinball X native table. State lives in User/VPReg.stg, an OLE",
     "Compound File: one storage per table, one stream per setting, each stream",
     "holding a UTF-16LE string. Scores are decimal strings, initials are plain",
@@ -28,26 +37,95 @@
         "name": null,
         "order": "ranked",
         "slots": [
+          "Grand Champion",
           "High Score #1",
           "High Score #2",
           "High Score #3",
-          "High Score #4",
-          "High Score #5",
-          "High Score #6",
-          "High Score #7",
-          "High Score #8",
-          "High Score #9",
-          "High Score #10",
-          "High Score #11",
-          "High Score #12",
-          "High Score #13",
-          "High Score #14",
-          "High Score #15",
-          "High Score #16"
+          "High Score #4"
+        ]
+      },
+      {
+        "key": "stark_champion",
+        "name": "Stark Champion",
+        "order": "ranked",
+        "slots": [
+          "Stark Champion"
+        ]
+      },
+      {
+        "key": "baratheon_champion",
+        "name": "Baratheon Champion",
+        "order": "ranked",
+        "slots": [
+          "Baratheon Champion"
+        ]
+      },
+      {
+        "key": "lannister_champion",
+        "name": "Lannister Champion",
+        "order": "ranked",
+        "slots": [
+          "Lannister Champion"
+        ]
+      },
+      {
+        "key": "greyjoy_champion",
+        "name": "Greyjoy Champion",
+        "order": "ranked",
+        "slots": [
+          "Greyjoy Champion"
+        ]
+      },
+      {
+        "key": "tyrell_champion",
+        "name": "Tyrell Champion",
+        "order": "ranked",
+        "slots": [
+          "Tyrell Champion"
+        ]
+      },
+      {
+        "key": "martell_champion",
+        "name": "Martell Champion",
+        "order": "ranked",
+        "slots": [
+          "Martell Champion"
+        ]
+      },
+      {
+        "key": "targaryen_champion",
+        "name": "Targaryen Champion",
+        "order": "ranked",
+        "slots": [
+          "Targaryen Champion"
+        ]
+      },
+      {
+        "key": "winter_has_come_champion",
+        "name": "Winter Has Come Champion",
+        "order": "ranked",
+        "slots": [
+          "Winter Has Come Champion"
+        ]
+      },
+      {
+        "key": "hand_of_the_king_champion",
+        "name": "Hand of the King Champion",
+        "order": "ranked",
+        "slots": [
+          "Hand of the King Champion"
+        ]
+      },
+      {
+        "key": "iron_throne_champion",
+        "name": "Iron Throne Champion",
+        "order": "ranked",
+        "slots": [
+          "Iron Throne Champion"
         ]
       }
     ],
-    "map_version": "3979d7bf18d2"
+    "map_version": "82dd001eed82"
   },
   "_metadata": {
     "version": 1,
@@ -56,7 +134,7 @@
   },
   "high_scores": [
     {
-      "label": "High Score #1",
+      "label": "Grand Champion",
       "initials": {
         "stream": "HighScore1Name",
         "encoding": "string"
@@ -67,7 +145,7 @@
       }
     },
     {
-      "label": "High Score #2",
+      "label": "High Score #1",
       "initials": {
         "stream": "HighScore2Name",
         "encoding": "string"
@@ -78,7 +156,7 @@
       }
     },
     {
-      "label": "High Score #3",
+      "label": "High Score #2",
       "initials": {
         "stream": "HighScore3Name",
         "encoding": "string"
@@ -89,7 +167,7 @@
       }
     },
     {
-      "label": "High Score #4",
+      "label": "High Score #3",
       "initials": {
         "stream": "HighScore4Name",
         "encoding": "string"
@@ -100,7 +178,7 @@
       }
     },
     {
-      "label": "High Score #5",
+      "label": "High Score #4",
       "initials": {
         "stream": "HighScore5Name",
         "encoding": "string"
@@ -109,9 +187,12 @@
         "stream": "HighScore5",
         "encoding": "decimal_string"
       }
-    },
+    }
+  ],
+  "mode_champions": [
     {
-      "label": "High Score #6",
+      "label": "Stark Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScore6Name",
         "encoding": "string"
@@ -122,7 +203,8 @@
       }
     },
     {
-      "label": "High Score #7",
+      "label": "Baratheon Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScore7Name",
         "encoding": "string"
@@ -133,7 +215,8 @@
       }
     },
     {
-      "label": "High Score #8",
+      "label": "Lannister Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScore8Name",
         "encoding": "string"
@@ -144,7 +227,8 @@
       }
     },
     {
-      "label": "High Score #9",
+      "label": "Greyjoy Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScore9Name",
         "encoding": "string"
@@ -155,7 +239,8 @@
       }
     },
     {
-      "label": "High Score #10",
+      "label": "Tyrell Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScore10Name",
         "encoding": "string"
@@ -166,7 +251,8 @@
       }
     },
     {
-      "label": "High Score #11",
+      "label": "Martell Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScore11Name",
         "encoding": "string"
@@ -177,7 +263,8 @@
       }
     },
     {
-      "label": "High Score #12",
+      "label": "Targaryen Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScore12Name",
         "encoding": "string"
@@ -188,7 +275,8 @@
       }
     },
     {
-      "label": "High Score #13",
+      "label": "Winter Has Come Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScore13Name",
         "encoding": "string"
@@ -199,7 +287,8 @@
       }
     },
     {
-      "label": "High Score #14",
+      "label": "Hand of the King Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScore14Name",
         "encoding": "string"
@@ -210,24 +299,14 @@
       }
     },
     {
-      "label": "High Score #15",
+      "label": "Iron Throne Champion",
+      "_note": "slot identified on the cabinet; label as attract mode displays it",
       "initials": {
         "stream": "HighScore15Name",
         "encoding": "string"
       },
       "score": {
         "stream": "HighScore15",
-        "encoding": "decimal_string"
-      }
-    },
-    {
-      "label": "High Score #16",
-      "initials": {
-        "stream": "HighScore16Name",
-        "encoding": "string"
-      },
-      "score": {
-        "stream": "HighScore16",
         "encoding": "decimal_string"
       }
     }

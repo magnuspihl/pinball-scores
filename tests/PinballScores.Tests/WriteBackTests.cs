@@ -249,6 +249,70 @@ public class WriteBackTests
     }
 
     [Fact]
+    public async Task GameOfThronesChampionsRoundTripToTheirOwnSlots()
+    {
+        // Its champions live in numbered streams, so a champion row and a main-board
+        // row are indistinguishable except through the map. Read the table, write
+        // exactly what was read, and every value must come back where it started.
+        var path = CopyVpReg();
+        var before = new StgScoreSource(path, TestData.Catalog).Extract()
+            .Single(r => r.Table == "gameofthrones").Scores.ToList();
+
+        var board = before
+            .Select(s => Score(s.Category, s.Player, s.Value))
+            .ToList();
+
+        // Writing back what was just read may legitimately change nothing, so the
+        // assertion is on the values, not on whether bytes moved.
+        await new StgScoreWriter(path, TestData.Catalog).WriteAsync("gameofthrones", board);
+
+        var after = new StgScoreSource(path, TestData.Catalog).Extract()
+            .Single(r => r.Table == "gameofthrones").Scores.ToList();
+
+        Assert.Equal(before, after);
+    }
+
+    [Fact]
+    public async Task AMainBoardScoreNeverLandsInAGameOfThronesChampionSlot()
+    {
+        // The bug this replaces: with all sixteen slots read as one board, the sixth
+        // best main-board score was written straight over the Stark champion.
+        var path = CopyVpReg();
+        var board = Enumerable.Range(1, 10)
+            .Select(i => Score(null, $"P{i:00}", (11 - i) * 10_000_000L))
+            .ToList();
+
+        await new StgScoreWriter(path, TestData.Catalog).WriteAsync("gameofthrones", board);
+
+        var read = new StgScoreSource(path, TestData.Catalog).Extract()
+            .Single(r => r.Table == "gameofthrones");
+
+        // Five fit; the rest are dropped rather than pushed into the champions.
+        Assert.Equal(5, read.Scores.Count(s => s.Category is null));
+        Assert.DoesNotContain(read.Scores, s => s.Category is not null && s.Player.StartsWith('P'));
+    }
+
+    [Fact]
+    public async Task GameOfThronesSixteenthSlotIsNeverWritten()
+    {
+        var path = CopyVpReg();
+        var before = ReadStream(path, "HighScore16");
+
+        await new StgScoreWriter(path, TestData.Catalog).WriteAsync("gameofthrones", []);
+
+        Assert.Equal(before, ReadStream(path, "HighScore16"));
+    }
+
+    private static string ReadStream(string vpReg, string stream)
+    {
+        using var root = OpenMcdf.RootStorage.OpenRead(vpReg);
+        using var data = root.OpenStorage("gameofthrones").OpenStream(stream);
+        var bytes = new byte[data.Length];
+        data.ReadExactly(bytes, 0, bytes.Length);
+        return System.Text.Encoding.Unicode.GetString(bytes);
+    }
+
+    [Fact]
     public async Task AnEmptyBoardBlanksTheVpxTable()
     {
         var path = CopyVpReg();
