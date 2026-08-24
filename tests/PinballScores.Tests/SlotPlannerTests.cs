@@ -104,6 +104,34 @@ public class SlotPlannerTests
     }
 
     [Fact]
+    public void DurationWriteBackConvertsFromCanonicalMillisecondsToTheFieldsNativeUnit()
+    {
+        // GET always returns a duration's value in milliseconds; the field it is
+        // written into is a raw centisecond integer. Dividing the millisecond value
+        // as if it were seconds is the write-side version of the read-side bug this
+        // fixes — it overflows the 16-bit field by roughly 10x.
+        var map = TestData.Catalog.Find("lotr")!;
+        var board = new[]
+        {
+            new RemoteScore
+            {
+                Table = "lotr",
+                Category = "destroy_ring_champion",
+                Initials = "EYE",
+                Value = "58140",
+                ValueType = "duration",
+                NativeUnit = "cs",
+            },
+        };
+
+        var plan = SlotPlanner.Plan(map, board).Where(a => a.Category is not null).ToList();
+
+        var ring = Assert.Single(plan);
+        Assert.Equal("EYE", ring.Initials);
+        Assert.Equal(5_814, ring.Value);
+    }
+
+    [Fact]
     public void ShortBoardBlanksTheRemainingSlots()
     {
         var map = TestData.Catalog.Find("smanve_101")!;

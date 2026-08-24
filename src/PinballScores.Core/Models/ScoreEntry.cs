@@ -12,7 +12,11 @@ public enum ScoreValueKind
     /// <summary>A count of things (castles destroyed, spiders squashed).</summary>
     Counter,
 
-    /// <summary>A length of time, in seconds.</summary>
+    /// <summary>
+    /// A length of time. Submitted in its native unit (see <see cref="ScoreEntry.ValueUnit"/>)
+    /// rather than seconds — the server's canonical storage is milliseconds, and
+    /// sending seconds throws away sub-second precision the field actually has.
+    /// </summary>
     Duration,
 
     /// <summary>A point in time, as UTC epoch seconds.</summary>
@@ -47,6 +51,10 @@ public enum ScoreValueKind
 /// honest form — a timestamp goes across as the machine's own wall-clock text,
 /// because a WPC clock has no timezone to convert from. Null means use the integer.
 /// </param>
+/// <param name="ValueUnit">
+/// The unit <see cref="Value"/> is expressed in, for a duration score — "cs" for a
+/// centisecond field. Null for every other kind, which is sent with no unit at all.
+/// </param>
 public sealed record ScoreEntry(
     string Table,
     string? Category,
@@ -55,7 +63,8 @@ public sealed record ScoreEntry(
     ScoreValueKind ValueKind = ScoreValueKind.Score,
     string? DisplaySuffix = null,
     IReadOnlyDictionary<string, string>? Metadata = null,
-    string? ValueText = null)
+    string? ValueText = null,
+    string? ValueUnit = null)
 {
     /// <summary>The value as submitted.</summary>
     public string Text => ValueText ?? Value.ToString(System.Globalization.CultureInfo.InvariantCulture);

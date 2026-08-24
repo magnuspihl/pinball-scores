@@ -23,6 +23,16 @@ public sealed class ScoreSubmission
     [JsonPropertyName("value_type")]
     public required string ValueType { get; init; }
 
+    /// <summary>
+    /// The unit <see cref="Value"/> is expressed in — "cs" for a centisecond field.
+    /// Only meaningful for <c>value_type: "duration"</c>; the server has no
+    /// default-seconds interpretation, so a duration submitted without this is read
+    /// as milliseconds. Omitted for every other kind, which take no unit at all.
+    /// </summary>
+    [JsonPropertyName("value_unit")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ValueUnit { get; init; }
+
     [JsonPropertyName("display_suffix")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? DisplaySuffix { get; init; }
@@ -50,6 +60,7 @@ public sealed class ScoreSubmission
             ScoreValueKind.Timestamp => "timestamp",
             _ => "score",
         },
+        ValueUnit = entry.ValueKind == ScoreValueKind.Duration ? entry.ValueUnit : null,
         DisplaySuffix = entry.DisplaySuffix,
     };
 }
@@ -125,6 +136,15 @@ public sealed class RemoteScore
     [JsonPropertyName("initials")] public string Initials { get; init; } = "";
     [JsonPropertyName("value")] public string Value { get; init; } = "0";
     [JsonPropertyName("value_type")] public string? ValueType { get; init; }
+
+    /// <summary>
+    /// The unit this row was originally submitted in — "cs" for lotr's Destroy Ring
+    /// time. <see cref="Value"/> is always milliseconds regardless; this is what
+    /// lets write-back convert back to the field's own native unit with integer
+    /// math instead of guessing or, worse, treating milliseconds as seconds.
+    /// </summary>
+    [JsonPropertyName("native_unit")] public string? NativeUnit { get; init; }
+
     [JsonPropertyName("display_suffix")] public string? DisplaySuffix { get; init; }
     [JsonPropertyName("rank")] public int Rank { get; init; }
 
@@ -139,4 +159,15 @@ public sealed class RemoteScore
     /// silently write zero into the machine.
     /// </summary>
     public long AsInt64 => ScoreValue.Parse(Value);
+
+    /// <summary>
+    /// <see cref="AsInt64"/> converted from the server's canonical milliseconds back
+    /// into the field's own native unit, with integer division so the round trip is
+    /// exact — 58140 ms ÷ 10 back to the 5814 the field stores. Anything that is not
+    /// a duration, or a duration with no <see cref="NativeUnit"/> to convert by, is
+    /// passed through unchanged.
+    /// </summary>
+    public long NativeValue => ValueType == "duration" && NativeUnit is { } unit
+        ? AsInt64 / DurationUnit.MillisecondsPerUnit(unit)
+        : AsInt64;
 }

@@ -113,7 +113,8 @@ public sealed class StgScoreSource : IScoreSource
                 category is not null ? category.ApiCategory : CategoryRules.Slugify(slot.Label),
                 player,
                 value,
-                category?.ValueKind ?? ScoreValueKind.Score));
+                category?.ValueKind ?? ScoreValueKind.Score,
+                ValueUnit: category?.ValueUnit));
         }
 
         return new ExtractionResult(map.Storage, scores);

@@ -28,6 +28,12 @@ namespace PinballScores.Core.Nvram;
 /// for every positional category mapped so far, so this changes only how a slot
 /// with no row behind it is blanked.
 /// </param>
+/// <param name="ValueUnit">
+/// The map's declared <c>value_unit</c> for a duration category — "cs" for a
+/// centisecond field. Null for every other kind. The field this describes is
+/// stored raw in this unit; the API's canonical storage is milliseconds, and it is
+/// the one doing the conversion, not the CLI.
+/// </param>
 public sealed record CategoryDefinition(
     string Key,
     string? Name,
@@ -35,7 +41,8 @@ public sealed record CategoryDefinition(
     ScoreValueKind ValueKind,
     string? ValueField = null,
     IReadOnlyDictionary<string, string>? MetadataFields = null,
-    bool Positional = false)
+    bool Positional = false,
+    string? ValueUnit = null)
 {
     /// <summary>
     /// The machine's main ranked leaderboard. Exactly one category per map has a
@@ -120,7 +127,8 @@ public sealed record CategoryDefinition(
                 ParseValueKind(entry.Prop("value_type").Str()),
                 entry.Prop("value_field").Str(),
                 metadata,
-                string.Equals(entry.Prop("order").Str(), "positional", StringComparison.OrdinalIgnoreCase)));
+                string.Equals(entry.Prop("order").Str(), "positional", StringComparison.OrdinalIgnoreCase),
+                entry.Prop("value_unit").Str()));
         }
 
         return categories;

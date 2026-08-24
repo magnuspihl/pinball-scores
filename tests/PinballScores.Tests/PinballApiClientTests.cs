@@ -105,6 +105,26 @@ public class PinballApiClientTests
     }
 
     [Fact]
+    public async Task DurationScoresCarryTheirUnitOnTheWireAndNoOtherKindDoes()
+    {
+        // The server has no default-seconds interpretation for value_type
+        // "duration": a value submitted with no unit is read as milliseconds.
+        var handler = new StubHandler("""{"received":2,"inserted":2}""");
+        using var client = Client(handler);
+
+        await client.SubmitAsync(["lotr"], [
+            new ScoreEntry("lotr", "destroy_ring_champion", "EYE", 5814, ScoreValueKind.Duration, ValueUnit: "cs"),
+            new ScoreEntry("lotr", null, "AAA", 75_000_000, ScoreValueKind.Score),
+        ]);
+
+        using var sent = JsonDocument.Parse(handler.LastBody!);
+        var entries = sent.RootElement.GetProperty("scores");
+        Assert.Equal("5814", entries[0].GetProperty("value").GetString());
+        Assert.Equal("cs", entries[0].GetProperty("value_unit").GetString());
+        Assert.False(entries[1].TryGetProperty("value_unit", out _));
+    }
+
+    [Fact]
     public async Task ParsesPerEntryResults()
     {
         var handler = new StubHandler("""
