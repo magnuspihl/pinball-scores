@@ -48,6 +48,27 @@ public class DryRunTests
     }
 
     [Fact]
+    public async Task TheBoardIsFetchedForEverySlotNotJustTheMainBoard()
+    {
+        // One response is partitioned across all of a table's categories, so asking
+        // for the main board's count alone starves the champions — and a category
+        // with no rows in the response gets blanked on the machine.
+        var handler = new StubHandler("[]");
+        var runner = ScoreSyncRunner.Create(Options(dryRun: true), NullLoggerFactory.Instance, new HttpClient(handler));
+
+        await runner.RunAsync();
+
+        string LimitFor(string table) => handler.Requests
+            .Select(r => r.RequestUri!.Query)
+            .Single(q => q.Contains($"table={table}&"))
+            .Split('&').Single(p => p.StartsWith("limit="));
+
+        Assert.Equal("limit=19", LimitFor("twd_156h"));        // 5 ranked + 14 champions
+        Assert.Equal("limit=15", LimitFor("gameofthrones"));   // 5 ranked + 10 champions
+        Assert.Equal("limit=5", LimitFor("avs_170"));          // no champions, unchanged
+    }
+
+    [Fact]
     public async Task DryRunAppliesNoWrites()
     {
         var handler = new StubHandler("[]");

@@ -68,6 +68,88 @@ NOTES = [
     "supports resizing streams natively.",
 ]
 
+# Streams alone do not always say what a slot *is*.  Game of Thrones names all
+# fifteen of its records `HighScoreN`, but only the first five are one ranked
+# board: the rest are per-house and per-mode champions, each its own one-slot
+# record, which the table's attract mode lists by name.  Deriving that from the
+# names is impossible, and reading them as ranks 6-15 files ten champion records
+# as main-board scores and lets write-back overwrite them.
+#
+# So the layout is declared here for the tables that need it, read off the
+# cabinet's own attract mode: a slot is (stream suffix, label), and the label is
+# that display text verbatim.
+#
+# A third element pins the category key.  The key is normally the slugified
+# label, which is fine while a table is being mapped for the first time, but
+# Guardians has been submitting `cb`/`combo`/`immo`/`xandar` since it was mapped
+# from its stream names.  Giving those categories their real titles must not
+# also rename the key, or the API gains four new categories and the old rows are
+# stranded under the old ones.  Display names are the website's job; the key is
+# identity and stays put.
+SLOT_LAYOUTS = {
+    "gameofthrones": {
+        "ranked": [
+            (1, "Grand Champion"),
+            (2, "High Score #1"),
+            (3, "High Score #2"),
+            (4, "High Score #3"),
+            (5, "High Score #4"),
+        ],
+        "champions": [
+            (6, "Stark Champion"),
+            (7, "Baratheon Champion"),
+            (8, "Lannister Champion"),
+            (9, "Greyjoy Champion"),
+            (10, "Tyrell Champion"),
+            (11, "Martell Champion"),
+            (12, "Targaryen Champion"),
+            (13, "Winter Has Come Champion"),
+            (14, "Hand of the King Champion"),
+            (15, "Iron Throne Champion"),
+        ],
+        "notes": [
+            "Slots are NOT ranks. HighScore1-5 are one ranked board (the Grand",
+            "Champion is its top slot, as on Stern SAM); HighScore6-15 are ten",
+            "separate one-slot champion records that attract mode names. The",
+            "structure shows in the factory defaults: slots 1-5 seed at",
+            "750M/500M/400M/300M/200M, slots 6-15 at a flat (17-n) million, and",
+            "beaten slots sit interleaved with untouched ones (6, 8, 9 and 12 in",
+            "the 2026-08 dumps) which a sorted board cannot produce.",
+            "HighScore16 exists but the table never uses it, so it is left",
+            "unmapped and write-back does not touch it.",
+        ],
+    },
+    "gotg_2020": {
+        "ranked": [
+            (1, "Grand Champion"),
+            (2, "High Score #1"),
+            (3, "High Score #2"),
+            (4, "High Score #3"),
+            (5, "High Score #4"),
+        ],
+        "champions": [
+            ("CB", "Cherry Bomb Multiball Champion", "cb"),
+            ("Combo", "Combo Champion", "combo"),
+            ("IMMO", "Immolation Initiative Champion", "immo"),
+            ("Xandar", "Save Xandar Champion", "xandar"),
+        ],
+        "notes": [
+            "Unlike Game of Thrones, the numbered slots really are one board --",
+            "but its top slot is the Grand Champion, and the champion streams are",
+            "named rather than numbered. Labels are the attract mode's titles,",
+            "read off the cabinet 2026-08-24; the keys stay as they were first",
+            "mapped from the stream names, because they are already in the API.",
+        ],
+    },
+}
+
+# The API's value_type for a category whose machine value is not a score. The
+# generator cannot tell a counter from a score by looking at the stream -- both
+# are decimal strings -- so the exceptions are declared.
+VALUE_TYPES = {
+    ("gotg_2020", "combo"): "counter",
+}
+
 
 def read_storage(ole, storage):
     values = {}
@@ -83,29 +165,47 @@ def read_storage(ole, storage):
     return values
 
 
+def streams_for(stream):
+    return {
+        "initials": {"stream": stream + "Name", "encoding": "string"},
+        "score": {"stream": stream, "encoding": "decimal_string"},
+    }
+
+
 def build_map(storage, title, values):
+    layout = SLOT_LAYOUTS.get(storage)
     ranked, champions = [], []
-    for name in sorted(values):
-        match = RANKED.match(name)
-        if match:
-            rank = int(match.group(1))
-            if name + "Name" not in values:
+    declared_keys = {}
+
+    if layout:
+        # Declared layout: the stream names say nothing about what a slot is, so
+        # nothing is inferred from them. A suffix may be a number or a name, and
+        # streams in neither list stay out of the map.
+        ranked = [(slot, dict(label=label, **streams_for("HighScore%s" % slot)))
+                  for slot, label in layout["ranked"]]
+        for champion in layout["champions"]:
+            slot, label = champion[0], champion[1]
+            if len(champion) > 2:
+                declared_keys[label] = champion[2]
+            champions.append(dict(
+                label=label,
+                _note="slot identified on the cabinet; label as attract mode displays it",
+                **streams_for("HighScore%s" % slot)))
+    else:
+        for name in sorted(values):
+            match = RANKED.match(name)
+            if match:
+                rank = int(match.group(1))
+                if name + "Name" not in values:
+                    continue
+                ranked.append((rank, dict(label="High Score #%d" % rank,
+                                          **streams_for(name))))
                 continue
-            ranked.append((rank, {
-                "label": "High Score #%d" % rank,
-                "initials": {"stream": name + "Name", "encoding": "string"},
-                "score": {"stream": name, "encoding": "decimal_string"},
-            }))
-            continue
-        match = CHAMPION.match(name)
-        if match and name + "Name" in values:
-            field = match.group(1)
-            champions.append({
-                "label": field,
-                "_note": "field name taken verbatim from the table script",
-                "initials": {"stream": name + "Name", "encoding": "string"},
-                "score": {"stream": name, "encoding": "decimal_string"},
-            })
+            match = CHAMPION.match(name)
+            if match and name + "Name" in values:
+                champions.append(dict(label=match.group(1),
+                                      _note="field name taken verbatim from the table script",
+                                      **streams_for(name)))
 
     ranked.sort()
     # Same category rollup the NVRAM maps carry: the numbered slots are the
@@ -115,17 +215,22 @@ def build_map(storage, title, values):
             return "main"
         return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
 
+    def category(key, name, slots):
+        entry = {"key": key, "name": name, "order": "ranked", "slots": slots}
+        if (storage, key) in VALUE_TYPES:
+            entry["value_type"] = VALUE_TYPES[(storage, key)]
+        return entry
+
     categories = []
     if ranked:
-        categories.append({"key": "main", "name": None, "order": "ranked",
-                           "slots": [e["label"] for _, e in ranked]})
-    categories += [{"key": key_for(e["label"]), "name": e["label"],
-                    "order": "ranked", "slots": [e["label"]]}
+        categories.append(category("main", None, [e["label"] for _, e in ranked]))
+    categories += [category(declared_keys.get(e["label"]) or key_for(e["label"]),
+                            e["label"], [e["label"]])
                    for e in champions]
 
     game_map = {
         "_fileformat": "pinballscores-stg-0.1",
-        "_notes": [title] + NOTES,
+        "_notes": [title] + (layout["notes"] if layout else []) + NOTES,
         "_pinballscores": {
             "cabinet_table": storage,
             "title": title,
@@ -173,14 +278,29 @@ def validate(game_map, values):
                     notes.append("%s: initials stream %r is empty"
                                  % (entry["label"], stream))
 
-    # Unlike the ROM tables, VPX table scripts do not necessarily keep their
-    # HighScoreN slots sorted -- some overwrite a slot in place.  That is not a
-    # mapping error, but it does mean slot number is not rank: the extractor
-    # has to derive rank by sorting the values it read.
+    # A score stream the map does not place is a score nobody reads and
+    # write-back never maintains, so say so rather than dropping it silently.
+    # On Game of Thrones one is expected (HighScore16, which the table never
+    # uses); anywhere else it means the table gained a field.
+    mapped = {entry[key]["stream"]
+              for group in ("high_scores", "mode_champions")
+              for entry in game_map.get(group, [])
+              for key in ("initials", "score")}
+    unmapped = sorted(name for name in values
+                      if name not in mapped
+                      and (RANKED.match(name) or CHAMPION.match(name))
+                      and name + "Name" in values)
+    if unmapped:
+        notes.append("not mapped, so never read or written: %s"
+                     % ", ".join(unmapped))
+
+    # Slots the map calls one ranked board should read as one: a lower slot
+    # holding a bigger score means either the script overwrites in place, or --
+    # as on Game of Thrones -- the slots below are not that board at all.
     if ranked_values != sorted(ranked_values, reverse=True):
         out_of_order = [i + 1 for i in range(1, len(ranked_values))
                         if ranked_values[i] > ranked_values[i - 1]]
-        notes.append("HighScoreN slots are not in descending order (slot %s "
+        notes.append("ranked slots are not in descending order (slot %s "
                      "beats the slot above it) -- slot number is not rank"
                      % ", ".join(str(s) for s in out_of_order))
     return problems, notes

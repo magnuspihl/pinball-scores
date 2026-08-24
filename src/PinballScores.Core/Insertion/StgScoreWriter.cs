@@ -47,6 +47,9 @@ public sealed class StgScoreWriter : IScoreWriter
         return map.Categories.FirstOrDefault(c => c.Matches(category))?.Slots.Count ?? 0;
     }
 
+    public int TotalSlotCount(string table) =>
+        Find(table)?.Categories.Sum(c => c.Slots.Count) ?? 0;
+
     private StgMap? Find(string table) =>
         _catalog.StgMaps.FirstOrDefault(m => string.Equals(m.Storage, table, StringComparison.OrdinalIgnoreCase));
 

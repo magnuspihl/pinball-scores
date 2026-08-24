@@ -212,7 +212,10 @@ public sealed class ScoreSyncRunner
 
             try
             {
-                var slots = Math.Max(writer.SlotCount(table, null), 1);
+                // Every slot on the machine, not just the main board's: the one
+                // response is partitioned across all of this table's categories,
+                // and a category with no rows in it gets blanked.
+                var slots = Math.Max(writer.TotalSlotCount(table), 1);
                 var board = await _api.GetBoardAsync(table, slots, cancellationToken).ConfigureAwait(false);
                 var result = await writer.WriteAsync(table, board, _options.DryRun, cancellationToken).ConfigureAwait(false);
 

@@ -31,6 +31,17 @@ public interface IScoreWriter
     int SlotCount(string table, string? category);
 
     /// <summary>
+    /// Every slot on the machine, across all categories — the number of rows a
+    /// single whole-table fetch has to ask for.
+    ///
+    /// This is not the main board's slot count. A champion category the fetch did
+    /// not cover looks exactly like a category the API holds nothing for, and the
+    /// machine's record gets blanked: on The Walking Dead that is fourteen slots
+    /// wiped from a five-row request.
+    /// </summary>
+    int TotalSlotCount(string table);
+
+    /// <summary>
     /// Applies the board to the machine's save data.
     /// </summary>
     /// <param name="dryRun">

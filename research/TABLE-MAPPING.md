@@ -62,7 +62,7 @@ untouched.
 | The Walking Dead | `twd_156h` | Stern SAM | 5 + 14 | 19 ✓ | per-record checksum16 |
 | X-Men LE | `xmn_151h` | Stern SAM | 5 + 1 | 6 ✓ | per-record checksum16 |
 | Deadpool | `jpsdeadpool` | VPX / STG | 4 + 0 | n/a | rewrite stream |
-| Game of Thrones | `gameofthrones` | VPX / STG | 16 + 0 | n/a | rewrite stream |
+| Game of Thrones | `gameofthrones` | VPX / STG | 5 + 10 | n/a | rewrite stream |
 | Guardians of the Galaxy | `gotg_2020` | VPX / STG | 5 + 4 | n/a | rewrite stream |
 
 All 15 NVRAM maps pass `research/tools/validate_maps.py` — fields decode,
@@ -277,20 +277,77 @@ already confirmed on the real cabinet for `gotg_2020` back in August.
 
 The maps exist because the *pairing* is table-script convention, not a standard:
 `HighScore3` goes with `HighScore3Name`, but champion fields follow no rank
-pattern (`HighScoreXandar` / `HighScoreXandarName`). Champion labels are the
-table script's own field names, verbatim — inventing a nicer display name would
-quietly become a different category in the score database if anyone later
-corrected it.
+pattern (`HighScoreXandar` / `HighScoreXandarName`).
+
+Champion labels started as the table script's own field names, because that was
+all the file gave us. Reading them off the cabinet's attract mode on 2026-08-24
+gave the real titles: `CB` is **Cherry Bomb Multiball Champion**, `IMMO` is
+**Immolation Initiative Champion**, `Xandar` is **Save Xandar Champion**. The
+maps now carry those titles, but the *keys* stay `cb` / `immo` / `xandar` —
+pinned as the third element of the layout entry — because those keys have been
+submitted since the table was first mapped, and a key change strands every row
+stored under the old one. Only the key is identity; nothing in the CLI reads a
+label for routing, and display names can be changed on the website instead.
+
+Guardians' numbered slots really are one board, unlike Game of Thrones — but its
+top slot is the Grand Champion, so its labels are now `Grand Champion` and
+`High Score #1`-`#4`. Those are main-board slot labels, which carry no API
+identity at all (the main board submits `category: null`).
 
 One thing to know before the extractor treats slot number as rank: **VPX tables
-do not necessarily keep their slots sorted.** Game of Thrones has 152,329,750
-sitting in slot 9 above 4,000,000 in slot 13, in both the sample and the current
-cabinet file. The initials still pair correctly with the values (the real,
-non-round scores carry real initials; the untouched defaults carry `AAA`/`BBB`/…),
-the list simply is not re-sorted on write. Rank has to be derived by sorting
-what you read. That matches the direction already agreed for the score store —
-rank is a query, not stored state — so it costs nothing here, but it would be a
-real bug for anything that trusted the slot index.
+do not necessarily keep their slots sorted.** Guardians holds its best score
+(83,986,330) in slot 5, under three smaller ones. The initials still pair
+correctly with the values, the list simply is not re-sorted on write. Rank has
+to be derived by sorting what you read. That matches the direction already
+agreed for the score store — rank is a query, not stored state — so it costs
+nothing here, but it would be a real bug for anything that trusted the slot
+index.
+
+### Game of Thrones: numbered slots that are not one board (corrected 2026-08-21)
+
+This section previously read the same way about Game of Thrones — 152,329,750 in
+slot 9 above 4,000,000 in slot 13, explained as a script that does not re-sort.
+That explanation was wrong. **Slots 6–15 are not that board at all.** They are
+ten separate one-slot champion records, which the table's attract mode lists by
+name, and `HighScore16` is unused.
+
+Two things in the file say so, both visible in the untouched factory defaults:
+
+- **The defaults are two different series.** Slots 1–5 seed at 750M / 500M /
+  400M / 300M / 200M. Slots 6–16 seed at exactly (17−n) million — 11M, 10M, 9M …
+  1M, a flat 1M step. One board does not drop two orders of magnitude at slot 6
+  and change its step.
+- **Occupancy is interleaved, which a sorted board cannot produce.** Beaten
+  slots are 6, 8, 9 and 12; pristine factory defaults still sit at 7, 10 and 11.
+  Inserting into a ranked list pushes the tail down, so real entries form a
+  contiguous run from the top. Each beaten slot also beats only *its own*
+  default: 152,329,750 in slot 9, whose default is 8M — in a sorted board it
+  would be slot 6, under the 200M default.
+
+The stream names carry none of this, so the layout is declared in `SLOT_LAYOUTS`
+in `tools/build_stg_maps.py`. Magnus mapped it on the cabinet on 2026-08-21 by
+writing a distinct sentinel into each slot and reading back the name it appeared
+under in attract mode:
+
+| slot | category | | slot | category |
+|---|---|---|---|---|
+| 1 | Grand Champion (main board, top slot) | | 9 | Greyjoy Champion |
+| 2–5 | High Score #1–#4 (main board) | | 10 | Tyrell Champion |
+| 6 | Stark Champion | | 11 | Martell Champion |
+| 7 | Baratheon Champion | | 12 | Targaryen Champion |
+| 8 | Lannister Champion | | 13 | Winter Has Come Champion |
+| | | | 14 | Hand of the King Champion |
+| | | | 15 | Iron Throne Champion |
+| | | | 16 | unused — deliberately unmapped |
+
+The Grand Champion goes in the main board's top slot rather than becoming its own
+category, the same call already settled for Stern SAM above: one achievement must
+not produce two rows.
+
+Cost of having had this wrong: ten champion records were extracted as main-board
+scores, and write-back — which zips the main board into its category's slots in
+rank order — would put the sixth-best main-board score straight over the Stark
+champion. `WriteBackTests` now guards both directions.
 
 Worth knowing when the score database starts ingesting: Guardians' leaderboard
 still carries `TS1`/500, `TS2`/400 and `TS3`/300 from the August write-back
