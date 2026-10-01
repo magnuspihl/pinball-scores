@@ -2,7 +2,7 @@ namespace PinballScores.Core.Models;
 
 /// <summary>
 /// How the API should interpret <see cref="ScoreEntry.Value"/>. Mirrors the
-/// <c>value_type</c> enum in the Foundry API.
+/// <c>value_type</c> enum in the pinball scores API.
 /// </summary>
 public enum ScoreValueKind
 {
