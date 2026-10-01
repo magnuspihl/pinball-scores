@@ -1,7 +1,7 @@
 # PinballScores
 
 Extracts high scores from the pinball cabinet's tables and submits them to the
-Foundry pinball API, then writes the API's authoritative board back onto the
+pinball scores API (`pinball-scores-web`, self-hosted on the local network), then writes the API's authoritative board back onto the
 machines so the cabinet and the website agree.
 
 Runs as an invisible Windows service. It has no UI, writes nothing to a console,
@@ -180,15 +180,37 @@ there are silently lost the first time the app updates itself. The installer
 creates the `%ProgramData%` copy from the packaged defaults if it does not
 already exist, and never overwrites it.
 
-Nothing sensitive is compiled in.
+Nothing sensitive is compiled in, and neither is the API's address. The API is
+self-hosted on the cabinet's own network, so `ApiBaseUrl` ships empty and the
+service refuses to start until the `%ProgramData%` copy sets it, e.g.
+`http://scores.example.lan/api`. Plain `http` is fine on the local network. `ApiKey` is
+optional: leave it empty for a server that does not ask for one, set it if the
+API is ever exposed beyond the LAN.
+
+**The contract is the `pinball-scores-web` source**, which is moved to
+self-hosting unchanged — not a spec. `research/foundry-openapi.json` is the spec Foundry
+published before it was retired, kept as a reference only, and it is **known to
+differ from the running server on category identity**: it says categories are
+keyed by slug, while the server actually keys them by the ROM's upper-case label
+(`CASTLE CHAMPION`), as described under [Categories](#categories). The client's
+loose category matching depends on the server's real behaviour, not the spec's.
+
+### Moving an existing cabinet off Foundry
+
+A cabinet installed before the move still has the retired Foundry staging URL in
+`C:\ProgramData\PinballScores\appsettings.json`. Updates never touch that file,
+so it has to be changed by hand — set `ApiBaseUrl` to the self-hosted API and
+clear `ApiKey` unless the server sets one — then restart the service. Until then
+every sync fails; the log says so at startup, and the install script refuses to
+start the service against that host.
 
 | Setting | Meaning |
 | --- | --- |
 | `NvramPath` | VPinMAME nvram folder |
 | `VpRegPath` | Visual Pinball `VPReg.stg` |
 | `MapOverridePath` | Extra maps, loaded over the bundled ones |
-| `ApiBaseUrl` | API root, including `/api` |
-| `ApiKey` | Sent as `X-API-Key` |
+| `ApiBaseUrl` | API root, including `/api`. **Required, no default** |
+| `ApiKey` | Sent as `X-API-Key` when set; optional |
 | `Source` | Labels this cabinet's submissions |
 | `Interval` | Scheduled run interval |
 | `DebounceDelay` | Quiet period after a file change |
@@ -367,8 +389,17 @@ everything you need — then, from an elevated PowerShell prompt:
 
 ```powershell
 .\PinballScores-win-Setup.exe --installto C:\PinballScores
-C:\PinballScores\current\Install-PinballScores.ps1
+C:\PinballScores\current\Install-PinballScores.ps1 -ApiBaseUrl 'http://scores.example.lan/api'
 ```
+
+`-ApiBaseUrl` (and `-ApiKey`, if the server wants one) are written into
+`C:\ProgramData\PinballScores\appsettings.json`. There is no default address, so
+without a valid address — missing, not an absolute `http`/`https` URL, or still
+the retired Foundry API — the service is registered for **manual start and not
+started**, since otherwise it would fail validation at every boot and the recovery
+actions would restart it in a loop. An invalid `-ApiBaseUrl` is refused before
+anything is written. Fix the address and rerun the script, which switches the
+service back to delayed automatic start and starts it.
 
 The install scripts are packaged with the app, so they land beside the executable
 and pick it up automatically. There is no need to clone the repo onto the cabinet.

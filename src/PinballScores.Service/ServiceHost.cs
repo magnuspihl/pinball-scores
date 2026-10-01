@@ -44,6 +44,11 @@ public static class ServiceHost
         log.LogInformation("Config: nvram={Nvram} vpreg={VpReg} api={Api} writeBack={WriteBack} ignored={Ignored}",
             options.NvramPath, options.VpRegPath, options.ApiBaseUrl, options.EnableWriteBack,
             options.IgnoredTables.Count == 0 ? "(none)" : string.Join(",", options.IgnoredTables));
+
+        if (options.UsesRetiredFoundryApi)
+            log.LogWarning(
+                "ApiBaseUrl is the retired Foundry API and every sync will fail. Set it to the self-hosted API in {Machine}",
+                MachineSettingsPath);
     }
 
     public static string LogDirectory { get; } = Path.Combine(

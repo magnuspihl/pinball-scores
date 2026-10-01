@@ -22,6 +22,17 @@ public sealed class SyncOptions
 
     public string? ApiKey { get; set; }
 
+    /// <summary>
+    /// True when <see cref="ApiBaseUrl"/> is still the Foundry staging API, which was
+    /// retired when the API moved to self-hosting. Settings seeded before the move
+    /// hold it, and they survive every update, so a cabinet can keep running against
+    /// a dead host with nothing but failed syncs to show for it.
+    /// </summary>
+    public bool UsesRetiredFoundryApi =>
+        Uri.TryCreate(ApiBaseUrl, UriKind.Absolute, out var api)
+        && api.Host.StartsWith("foundryapps", StringComparison.OrdinalIgnoreCase)
+        && api.Host.EndsWith(".scw.cloud", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Identifies this cabinet in submitted rows.</summary>
     public string Source { get; set; } = "pinballscores-cli";
 
@@ -89,8 +100,9 @@ public sealed class SyncOptions
     {
         if (string.IsNullOrWhiteSpace(ApiBaseUrl))
             yield return $"{SectionName}:ApiBaseUrl is required";
-        else if (!Uri.TryCreate(ApiBaseUrl, UriKind.Absolute, out _))
-            yield return $"{SectionName}:ApiBaseUrl is not a valid absolute URL";
+        else if (!Uri.TryCreate(ApiBaseUrl, UriKind.Absolute, out var api)
+                 || (api.Scheme != Uri.UriSchemeHttp && api.Scheme != Uri.UriSchemeHttps))
+            yield return $"{SectionName}:ApiBaseUrl is not a valid http(s) URL";
 
         if (string.IsNullOrWhiteSpace(NvramPath) && string.IsNullOrWhiteSpace(VpRegPath))
             yield return $"{SectionName}: at least one of NvramPath or VpRegPath must be set";

@@ -27,6 +27,13 @@ are being replaced. Planned replacement: an internal platform called **Foundry**
 by a shared Postgres database. Don't design new backend code around Firestore concepts
 (documents, `SetAsync`/`MergeAll`) — think relational/Postgres.
 
+**Superseded 2026-10-01:** Foundry is no longer available. The same API source
+(`pinball-scores-web`) is self-hosted on the cabinet's local network.
+The `pinball-scores-web` source itself is the contract. Foundry's last published
+spec is archived in `foundry-openapi.json` for reference only; it is known to
+differ from the running server on category identity (it says slugs, the server
+keys by the ROM's upper-case label).
+
 ## A real, live bug found along the way
 
 `ScoreModel.Score` is a 32-bit `float` (`ScoreModel.cs:15`), and `PINemHiExtractor.CleanScore`
@@ -234,6 +241,7 @@ actually fork/push/open — not something done automatically from this task.
 
 - FX3 (Pinball FX3) save format — README already flags it as possibly encrypted, unknown
   even for reading. Magnus wants this as a separate future task, not part of this thread.
-- The actual new API/server implementation — being designed in Foundry (a different
+- The actual new API/server implementation — being designed in Foundry (now
+  `pinball-scores-web`, self-hosted on the local network; see above) (a different
   Claude-based interface), not built here. This document is the context to hand it.
 - The CLI reimplementation to match that new API — planned as a separate CPM task.

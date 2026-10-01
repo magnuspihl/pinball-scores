@@ -1,0 +1,1975 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Forte Advice Pinball",
+        "version": "1.0.0",
+        "description": "Scoreboards for the office pinball machines. Cabinets POST their whole high-score board; duplicates (same table + category + initials + value) are dropped. Scores are insert-only, stored as int64 and timestamped by the API, never by the cabinet. Categories are identified everywhere by their SLUG \u2014 the same identifier the cabinet memory maps use (\"destroy_ring_champion\"); labels are display only and never a key. Each machine has one main ranked leaderboard, slug \"main\", reported as category null, plus any number of achievement categories that may hold a score, a counter, a duration in whole milliseconds or an epoch timestamp."
+    },
+    "paths": {
+        "/health": {
+            "get": {
+                "summary": "Health check (Foundry contract)",
+                "description": "status is healthy, degraded or unhealthy. 200 for healthy/degraded, 503 for unhealthy. /healthz is kept as an alias that reports status \"ok\" for older probes.",
+                "responses": {
+                    "200": {
+                        "description": "Service healthy or degraded",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "healthy",
+                                                "degraded",
+                                                "unhealthy"
+                                            ]
+                                        },
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0.0"
+                                        },
+                                        "uptime": {
+                                            "type": "integer",
+                                            "description": "Seconds since the process started"
+                                        },
+                                        "dependencies": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "healthy",
+                                                            "degraded",
+                                                            "unhealthy"
+                                                        ]
+                                                    },
+                                                    "latencyMs": {
+                                                        "type": "integer"
+                                                    },
+                                                    "detail": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "example": {
+                                                "postgresql": {
+                                                    "status": "healthy",
+                                                    "latencyMs": 3
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Unhealthy \u2014 same envelope"
+                    }
+                }
+            }
+        },
+        "/.well-known/foundry.json": {
+            "get": {
+                "summary": "Foundry app manifest",
+                "responses": {
+                    "200": {
+                        "description": "Manifest \u2014 name, type, ui, api, capabilities, auth, health"
+                    }
+                }
+            }
+        },
+        "/api/openapi.json": {
+            "get": {
+                "summary": "This document (also served at /openapi.json)",
+                "responses": {
+                    "200": {
+                        "description": "OpenAPI 3.1 specification"
+                    }
+                }
+            }
+        },
+        "/api/scores": {
+            "get": {
+                "summary": "Scores for the CLI \u2014 category, initials, value",
+                "description": "Plain text by default: one tab-separated line per score, columns category, initials, value. An EMPTY category column is the main ranked leaderboard (category null in JSON). Without ?table= the table id is prefixed as a first column. The main leaderboard comes first, then the achievement categories ranked by their own top value, alphabetical on a tie; values descend within a category. Split on TAB, not on whitespace, because of the empty column.",
+                "parameters": [
+                    {
+                        "name": "table",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Table id or alias"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "default": 10,
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 1000
+                                },
+                                {
+                                    "type": "string",
+                                    "enum": [
+                                        "slots",
+                                        "shown",
+                                        "all"
+                                    ]
+                                }
+                            ]
+                        },
+                        "description": "Rows kept per category (not per response). \"slots\" gives exactly as many rows as the cabinet keeps for each category (from its memory map) \u2014 what a writeback needs. \"shown\" uses each category's rows_shown, the same cut the website makes; \"all\" removes the cut."
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "text",
+                                "json"
+                            ],
+                            "default": "text"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Score list",
+                        "content": {
+                            "text/plain": {
+                                "schema": {
+                                    "type": "string",
+                                    "example": "\tFRY\t89407424\nmadness_champion\tKOZ\t20000000\n"
+                                }
+                            },
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "table": {
+                                                "type": "string",
+                                                "example": "mm_109c"
+                                            },
+                                            "category": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "description": "The category SLUG, exactly as the cabinet memory maps spell it (lowercase, underscores). null is the machine's main ranked leaderboard \u2014 slug \"main\" \u2014 into which GRAND CHAMPION / HIGH SCORES / HONOR ROLL / \u2026 all collapse, rank derived from the score order. Empty first column in the text format.",
+                                                "example": "madness_champion"
+                                            },
+                                            "slug": {
+                                                "type": "string",
+                                                "description": "The same slug, never null: \"main\" for the ranked leaderboard.",
+                                                "example": "main"
+                                            },
+                                            "label": {
+                                                "type": "string",
+                                                "description": "Display name only \u2014 the machine's wording, admin-editable. Never use it as a key.",
+                                                "example": "Madness Champion"
+                                            },
+                                            "slots": {
+                                                "type": [
+                                                    "integer",
+                                                    "null"
+                                                ],
+                                                "description": "How many places the cabinet itself keeps for this category, from its memory map.",
+                                                "example": 5
+                                            },
+                                            "ordering": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "enum": [
+                                                    "ranked",
+                                                    "positional",
+                                                    null
+                                                ],
+                                                "description": "\"ranked\" \u2014 position comes from the value. \"positional\" \u2014 the machine's slots are their own thing (Medieval Madness keeps four King of the Realm slots). Metadata; output is ranked by value either way."
+                                            },
+                                            "value_type": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "score",
+                                                    "counter",
+                                                    "duration",
+                                                    "timestamp"
+                                                ],
+                                                "default": "score",
+                                                "description": "How the bigint value should be read. score: the score itself. counter: how many. duration: whole MILLISECONDS (not seconds \u2014 cabinet fields such as the Lord of the Rings ring timer count hundredths of a second, and milliseconds keep those exact while the value stays an integer). timestamp: epoch seconds, UTC."
+                                            },
+                                            "value_unit": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "enum": [
+                                                    "ms",
+                                                    "cs",
+                                                    "ds",
+                                                    "s",
+                                                    "m",
+                                                    "h",
+                                                    null
+                                                ],
+                                                "description": "Duration unit. On submission it is the unit of the value being sent (default ms) and is remembered as the category's native_unit; on output it is the unit the value is stored in \u2014 always \"ms\" for a duration, \"s\" for a timestamp, null otherwise."
+                                            },
+                                            "native_unit": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "description": "The unit the cabinet's own field counts in, when a submission or an admin has declared it (e.g. \"cs\" for a hundredths-of-a-second NVRAM timer). Divide the stored millisecond value by the unit to reproduce the exact integer the machine expects: 12340 ms / 10 = 1234 cs. Metadata only \u2014 it never changes how a submitted value is read.",
+                                                "example": "cs"
+                                            },
+                                            "display_suffix": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "example": "Castles Destroyed"
+                                            },
+                                            "rank": {
+                                                "type": "integer",
+                                                "description": "1-based position inside the category",
+                                                "example": 1
+                                            },
+                                            "initials": {
+                                                "type": "string",
+                                                "example": "MHP"
+                                            },
+                                            "value": {
+                                                "type": "string",
+                                                "description": "int64 as a string, to keep full precision. Read it according to value_type: a score or counter as-is, a duration as whole milliseconds, a timestamp as epoch seconds.",
+                                                "example": "89407424"
+                                            },
+                                            "score": {
+                                                "type": "string",
+                                                "description": "Legacy name for value \u2014 same int64 string"
+                                            },
+                                            "display": {
+                                                "type": "string",
+                                                "description": "The value formatted the way the website prints it, suffix included",
+                                                "example": "0:00:12.34"
+                                            },
+                                            "metadata": {
+                                                "type": [
+                                                    "object",
+                                                    "null"
+                                                ],
+                                                "additionalProperties": {
+                                                    "type": "string"
+                                                },
+                                                "description": "Opaque per-row annotation the cabinet reads alongside the value, stored and returned VERBATIM as a string map. Medieval Madness' Kings of the Realm sends crowned_at (the coronation date the DMD shows \u2014 wall clock with no timezone, \"YYYY-MM-DD HH:MM\"; it is never parsed, converted or given an offset) and crowned_count (how many times that player has been crowned, a decimal integer as a string). Never part of the dedup key: same table+category+initials+value is the same coronation whatever the metadata reads. Absent for every other category.",
+                                                "example": {
+                                                    "crowned_at": "2026-06-14 20:41",
+                                                    "crowned_count": "2"
+                                                }
+                                            },
+                                            "submitted_at": {
+                                                "type": "string",
+                                                "format": "date-time",
+                                                "description": "When the API first saw the score, not when it was achieved"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Submit a batch of scores (cabinet extractor)",
+                "description": "Takes a whole board. Duplicates (same table + category + initials + value) are dropped, so most submissions are expected to be no-ops \u2014 that is the normal case, not an error. One bad row never fails the batch: every entry comes back in results with inserted / duplicate / echo / ignored / rejected and, when rejected or ignored, a reason. Unset slots need no filtering by the caller \u2014 initials holding no letter or digit (\"   \", \"---\", \"\") are ignored, not rejected and not stored. Send a tables array of the boards this run READ (see the request body) to keep a board the server cleared cleared: rows that merely repeat what this source last showed come back as \"echo\" \u2014 not inserted, not entered into a running competition, not announced \u2014 while a genuinely re-earned score is still inserted. Echo is distinct from duplicate: duplicate means the server already holds this exact row; echo means the machine has not moved since its last report. Scores are insert-only and timestamped server-side; cabinet timestamps are ignored. Send X-API-Key if PINBALL_API_KEY is configured, and optionally X-Source to label the rows. X-Announce: off (or ?announce=false) stores the batch without announcing any of it in Slack, for a first sync, a backfill or a test fill; it applies to that request only and changes no setting. Provenance (map_version, extractor_version, source_slot) may be given per entry, per table, for the whole batch, or as the headers X-Map-Version / X-Extractor-Version. It is stored but never deduped on, so a corrected memory map does not re-insert the board; a row keeps the provenance of the run that first created it, and later runs reporting the same row are recorded as sightings.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "required": [
+                                            "scores"
+                                        ],
+                                        "properties": {
+                                            "table": {
+                                                "type": "string",
+                                                "example": "mm_109c"
+                                            },
+                                            "map_version": {
+                                                "type": "string",
+                                                "description": "Hash/version of the NVRAM memory map that produced the row. Never part of the dedup key: submitting the same board under a corrected map is still a batch of duplicates, not a new board.",
+                                                "example": "e3b0c44298fc"
+                                            },
+                                            "extractor_version": {
+                                                "type": "string",
+                                                "description": "Version of the CLI that submitted the row",
+                                                "example": "cli-1.4.2"
+                                            },
+                                            "source_slot": {
+                                                "type": "string",
+                                                "description": "The physical slot the value was read from \u2014 rank is derived, so the slot is otherwise lost",
+                                                "example": "Q Continuum #3"
+                                            },
+                                            "tables": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "description": "Every board the cabinet READ this run, including boards that held no scores \u2014 send it alongside scores. Listing a table turns on last-seen tracking for it: a board identical to what this source (X-Source) last reported contains nothing new, so its rows come back as \"echo\" rather than being re-inserted or announced, and a board listed here with no scores of its own is how the server learns a clear (competition start, a delete, a wipe) reached the machine \u2014 so an empty scores array is NOT a no-op when tables is present. A table that could not be read (missing/locked file, unmapped ROM) must be OMITTED, never listed empty: \"read, empty\" and \"no information\" must not be conflated. Omit tables entirely to keep the older behaviour (everything inserts, no last-seen state kept).",
+                                                "example": [
+                                                    "smanve_101",
+                                                    "taf_l7",
+                                                    "gameofthrones"
+                                                ]
+                                            },
+                                            "scores": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "initials",
+                                                        "value"
+                                                    ],
+                                                    "properties": {
+                                                        "table": {
+                                                            "type": "string",
+                                                            "description": "Overrides the batch table for this entry",
+                                                            "example": "mm_109c"
+                                                        },
+                                                        "category": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ],
+                                                            "description": "The category slug from the memory map (\"castle_champion\"). null / absent / \"main\" / any main-board spelling => the main ranked leaderboard. A human label (\"CASTLE CHAMPION\") is still accepted and slugified to the same key, so an older extractor keeps landing on the same board.",
+                                                            "example": "castle_champion"
+                                                        },
+                                                        "label": {
+                                                            "type": "string",
+                                                            "description": "Optional display wording for this category, straight from the map (\"Castle Champion\"). Stored as the category label; never part of any key."
+                                                        },
+                                                        "slots": {
+                                                            "type": "integer",
+                                                            "description": "Optional: how many places the cabinet keeps for this category. Returned by ?limit=slots."
+                                                        },
+                                                        "initials": {
+                                                            "type": "string",
+                                                            "example": "JCY"
+                                                        },
+                                                        "value": {
+                                                            "type": [
+                                                                "string",
+                                                                "integer"
+                                                            ],
+                                                            "description": "int64. Send anything above 2^53 as a string. With value_type \"duration\" the number is whole milliseconds unless value_unit says otherwise, and \"12.34s\" / \"0:10:00\" / \"1:02.5\" are also accepted; anything finer than a millisecond is rejected rather than rounded. With value_type \"timestamp\", epoch seconds or \"YYYY-MM-DD HH:MM\".",
+                                                            "example": 6
+                                                        },
+                                                        "score": {
+                                                            "type": [
+                                                                "string",
+                                                                "integer"
+                                                            ],
+                                                            "description": "Synonym for value"
+                                                        },
+                                                        "value_type": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "score",
+                                                                "counter",
+                                                                "duration",
+                                                                "timestamp"
+                                                            ],
+                                                            "default": "score",
+                                                            "description": "How the bigint value should be read. score: the score itself. counter: how many. duration: whole MILLISECONDS (not seconds \u2014 cabinet fields such as the Lord of the Rings ring timer count hundredths of a second, and milliseconds keep those exact while the value stays an integer). timestamp: epoch seconds, UTC."
+                                                        },
+                                                        "value_unit": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "ms",
+                                                                "cs",
+                                                                "ds",
+                                                                "s",
+                                                                "m",
+                                                                "h"
+                                                            ],
+                                                            "description": "Durations only: the unit of the value in this entry, default ms. Send the raw NVRAM integer with its own unit (1234 with value_unit \"cs\") and nothing is ever rounded. Remembered as the category's native_unit.",
+                                                            "example": "cs"
+                                                        },
+                                                        "display_suffix": {
+                                                            "type": "string",
+                                                            "description": "Optional trailing text for the whole category, e.g. \"Castles Destroyed\""
+                                                        },
+                                                        "metadata": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "additionalProperties": {
+                                                                "type": "string"
+                                                            },
+                                                            "description": "Opaque per-row annotation the cabinet reads alongside the value, stored and returned VERBATIM as a string map. Medieval Madness' Kings of the Realm sends crowned_at (the coronation date the DMD shows \u2014 wall clock with no timezone, \"YYYY-MM-DD HH:MM\"; it is never parsed, converted or given an offset) and crowned_count (how many times that player has been crowned, a decimal integer as a string). Never part of the dedup key: same table+category+initials+value is the same coronation whatever the metadata reads. Absent for every other category.",
+                                                            "example": {
+                                                                "crowned_at": "2026-06-14 20:41",
+                                                                "crowned_count": "2"
+                                                            }
+                                                        },
+                                                        "map_version": {
+                                                            "type": "string",
+                                                            "description": "Hash/version of the NVRAM memory map that produced the row. Never part of the dedup key: submitting the same board under a corrected map is still a batch of duplicates, not a new board.",
+                                                            "example": "e3b0c44298fc"
+                                                        },
+                                                        "extractor_version": {
+                                                            "type": "string",
+                                                            "description": "Version of the CLI that submitted the row",
+                                                            "example": "cli-1.4.2"
+                                                        },
+                                                        "source_slot": {
+                                                            "type": "string",
+                                                            "description": "The physical slot the value was read from \u2014 rank is derived, so the slot is otherwise lost",
+                                                            "example": "Q Continuum #3"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "required": [
+                                                "initials",
+                                                "value"
+                                            ],
+                                            "properties": {
+                                                "table": {
+                                                    "type": "string",
+                                                    "description": "Overrides the batch table for this entry",
+                                                    "example": "mm_109c"
+                                                },
+                                                "category": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "The category slug from the memory map (\"castle_champion\"). null / absent / \"main\" / any main-board spelling => the main ranked leaderboard. A human label (\"CASTLE CHAMPION\") is still accepted and slugified to the same key, so an older extractor keeps landing on the same board.",
+                                                    "example": "castle_champion"
+                                                },
+                                                "label": {
+                                                    "type": "string",
+                                                    "description": "Optional display wording for this category, straight from the map (\"Castle Champion\"). Stored as the category label; never part of any key."
+                                                },
+                                                "slots": {
+                                                    "type": "integer",
+                                                    "description": "Optional: how many places the cabinet keeps for this category. Returned by ?limit=slots."
+                                                },
+                                                "initials": {
+                                                    "type": "string",
+                                                    "example": "JCY"
+                                                },
+                                                "value": {
+                                                    "type": [
+                                                        "string",
+                                                        "integer"
+                                                    ],
+                                                    "description": "int64. Send anything above 2^53 as a string. With value_type \"duration\" the number is whole milliseconds unless value_unit says otherwise, and \"12.34s\" / \"0:10:00\" / \"1:02.5\" are also accepted; anything finer than a millisecond is rejected rather than rounded. With value_type \"timestamp\", epoch seconds or \"YYYY-MM-DD HH:MM\".",
+                                                    "example": 6
+                                                },
+                                                "score": {
+                                                    "type": [
+                                                        "string",
+                                                        "integer"
+                                                    ],
+                                                    "description": "Synonym for value"
+                                                },
+                                                "value_type": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "score",
+                                                        "counter",
+                                                        "duration",
+                                                        "timestamp"
+                                                    ],
+                                                    "default": "score",
+                                                    "description": "How the bigint value should be read. score: the score itself. counter: how many. duration: whole MILLISECONDS (not seconds \u2014 cabinet fields such as the Lord of the Rings ring timer count hundredths of a second, and milliseconds keep those exact while the value stays an integer). timestamp: epoch seconds, UTC."
+                                                },
+                                                "value_unit": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "ms",
+                                                        "cs",
+                                                        "ds",
+                                                        "s",
+                                                        "m",
+                                                        "h"
+                                                    ],
+                                                    "description": "Durations only: the unit of the value in this entry, default ms. Send the raw NVRAM integer with its own unit (1234 with value_unit \"cs\") and nothing is ever rounded. Remembered as the category's native_unit.",
+                                                    "example": "cs"
+                                                },
+                                                "display_suffix": {
+                                                    "type": "string",
+                                                    "description": "Optional trailing text for the whole category, e.g. \"Castles Destroyed\""
+                                                },
+                                                "metadata": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "additionalProperties": {
+                                                        "type": "string"
+                                                    },
+                                                    "description": "Opaque per-row annotation the cabinet reads alongside the value, stored and returned VERBATIM as a string map. Medieval Madness' Kings of the Realm sends crowned_at (the coronation date the DMD shows \u2014 wall clock with no timezone, \"YYYY-MM-DD HH:MM\"; it is never parsed, converted or given an offset) and crowned_count (how many times that player has been crowned, a decimal integer as a string). Never part of the dedup key: same table+category+initials+value is the same coronation whatever the metadata reads. Absent for every other category.",
+                                                    "example": {
+                                                        "crowned_at": "2026-06-14 20:41",
+                                                        "crowned_count": "2"
+                                                    }
+                                                },
+                                                "map_version": {
+                                                    "type": "string",
+                                                    "description": "Hash/version of the NVRAM memory map that produced the row. Never part of the dedup key: submitting the same board under a corrected map is still a batch of duplicates, not a new board.",
+                                                    "example": "e3b0c44298fc"
+                                                },
+                                                "extractor_version": {
+                                                    "type": "string",
+                                                    "description": "Version of the CLI that submitted the row",
+                                                    "example": "cli-1.4.2"
+                                                },
+                                                "source_slot": {
+                                                    "type": "string",
+                                                    "description": "The physical slot the value was read from \u2014 rank is derived, so the slot is otherwise lost",
+                                                    "example": "Q Continuum #3"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "type": "object",
+                                        "required": [
+                                            "tables"
+                                        ],
+                                        "properties": {
+                                            "tables": {
+                                                "oneOf": [
+                                                    {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "description": "Every board the cabinet READ this run, including boards that held no scores \u2014 send it alongside scores. Listing a table turns on last-seen tracking for it: a board identical to what this source (X-Source) last reported contains nothing new, so its rows come back as \"echo\" rather than being re-inserted or announced, and a board listed here with no scores of its own is how the server learns a clear (competition start, a delete, a wipe) reached the machine \u2014 so an empty scores array is NOT a no-op when tables is present. A table that could not be read (missing/locked file, unmapped ROM) must be OMITTED, never listed empty: \"read, empty\" and \"no information\" must not be conflated. Omit tables entirely to keep the older behaviour (everything inserts, no last-seen state kept).",
+                                                        "example": [
+                                                            "smanve_101",
+                                                            "taf_l7",
+                                                            "gameofthrones"
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "scores": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "object",
+                                                                        "required": [
+                                                                            "initials",
+                                                                            "value"
+                                                                        ],
+                                                                        "properties": {
+                                                                            "table": {
+                                                                                "type": "string",
+                                                                                "description": "Overrides the batch table for this entry",
+                                                                                "example": "mm_109c"
+                                                                            },
+                                                                            "category": {
+                                                                                "type": [
+                                                                                    "string",
+                                                                                    "null"
+                                                                                ],
+                                                                                "description": "The category slug from the memory map (\"castle_champion\"). null / absent / \"main\" / any main-board spelling => the main ranked leaderboard. A human label (\"CASTLE CHAMPION\") is still accepted and slugified to the same key, so an older extractor keeps landing on the same board.",
+                                                                                "example": "castle_champion"
+                                                                            },
+                                                                            "label": {
+                                                                                "type": "string",
+                                                                                "description": "Optional display wording for this category, straight from the map (\"Castle Champion\"). Stored as the category label; never part of any key."
+                                                                            },
+                                                                            "slots": {
+                                                                                "type": "integer",
+                                                                                "description": "Optional: how many places the cabinet keeps for this category. Returned by ?limit=slots."
+                                                                            },
+                                                                            "initials": {
+                                                                                "type": "string",
+                                                                                "example": "JCY"
+                                                                            },
+                                                                            "value": {
+                                                                                "type": [
+                                                                                    "string",
+                                                                                    "integer"
+                                                                                ],
+                                                                                "description": "int64. Send anything above 2^53 as a string. With value_type \"duration\" the number is whole milliseconds unless value_unit says otherwise, and \"12.34s\" / \"0:10:00\" / \"1:02.5\" are also accepted; anything finer than a millisecond is rejected rather than rounded. With value_type \"timestamp\", epoch seconds or \"YYYY-MM-DD HH:MM\".",
+                                                                                "example": 6
+                                                                            },
+                                                                            "score": {
+                                                                                "type": [
+                                                                                    "string",
+                                                                                    "integer"
+                                                                                ],
+                                                                                "description": "Synonym for value"
+                                                                            },
+                                                                            "value_type": {
+                                                                                "type": "string",
+                                                                                "enum": [
+                                                                                    "score",
+                                                                                    "counter",
+                                                                                    "duration",
+                                                                                    "timestamp"
+                                                                                ],
+                                                                                "default": "score",
+                                                                                "description": "How the bigint value should be read. score: the score itself. counter: how many. duration: whole MILLISECONDS (not seconds \u2014 cabinet fields such as the Lord of the Rings ring timer count hundredths of a second, and milliseconds keep those exact while the value stays an integer). timestamp: epoch seconds, UTC."
+                                                                            },
+                                                                            "value_unit": {
+                                                                                "type": "string",
+                                                                                "enum": [
+                                                                                    "ms",
+                                                                                    "cs",
+                                                                                    "ds",
+                                                                                    "s",
+                                                                                    "m",
+                                                                                    "h"
+                                                                                ],
+                                                                                "description": "Durations only: the unit of the value in this entry, default ms. Send the raw NVRAM integer with its own unit (1234 with value_unit \"cs\") and nothing is ever rounded. Remembered as the category's native_unit.",
+                                                                                "example": "cs"
+                                                                            },
+                                                                            "display_suffix": {
+                                                                                "type": "string",
+                                                                                "description": "Optional trailing text for the whole category, e.g. \"Castles Destroyed\""
+                                                                            },
+                                                                            "metadata": {
+                                                                                "type": [
+                                                                                    "object",
+                                                                                    "null"
+                                                                                ],
+                                                                                "additionalProperties": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "description": "Opaque per-row annotation the cabinet reads alongside the value, stored and returned VERBATIM as a string map. Medieval Madness' Kings of the Realm sends crowned_at (the coronation date the DMD shows \u2014 wall clock with no timezone, \"YYYY-MM-DD HH:MM\"; it is never parsed, converted or given an offset) and crowned_count (how many times that player has been crowned, a decimal integer as a string). Never part of the dedup key: same table+category+initials+value is the same coronation whatever the metadata reads. Absent for every other category.",
+                                                                                "example": {
+                                                                                    "crowned_at": "2026-06-14 20:41",
+                                                                                    "crowned_count": "2"
+                                                                                }
+                                                                            },
+                                                                            "map_version": {
+                                                                                "type": "string",
+                                                                                "description": "Hash/version of the NVRAM memory map that produced the row. Never part of the dedup key: submitting the same board under a corrected map is still a batch of duplicates, not a new board.",
+                                                                                "example": "e3b0c44298fc"
+                                                                            },
+                                                                            "extractor_version": {
+                                                                                "type": "string",
+                                                                                "description": "Version of the CLI that submitted the row",
+                                                                                "example": "cli-1.4.2"
+                                                                            },
+                                                                            "source_slot": {
+                                                                                "type": "string",
+                                                                                "description": "The physical slot the value was read from \u2014 rank is derived, so the slot is otherwise lost",
+                                                                                "example": "Q Continuum #3"
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        "text/plain": {
+                            "schema": {
+                                "type": "string",
+                                "description": "The same columns a GET returns: category<TAB>initials<TAB>value, or table<TAB>category<TAB>initials<TAB>value. Empty category = main leaderboard. # starts a comment.",
+                                "example": "\tFRY\t89407424\nmadness_champion\tKOZ\t20000000"
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "table",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Default table for entries without one"
+                    },
+                    {
+                        "name": "X-Announce",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "off"
+                            ]
+                        },
+                        "description": "Store this batch without announcing any of it in Slack. Applies to this request only."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Accepted, nothing new (all duplicates, echoes, empty slots or rejections)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "received": {
+                                            "type": "integer"
+                                        },
+                                        "inserted": {
+                                            "type": "integer"
+                                        },
+                                        "duplicates": {
+                                            "type": "integer"
+                                        },
+                                        "echoes": {
+                                            "type": "integer",
+                                            "description": "Rows that were not treated as newly achieved because the board they belong to has not moved since the cabinet last reported it. Distinct from duplicates: a duplicate means the server already holds this exact row, whereas an echo means the machine is simply re-reporting a board the server already knew it was showing \u2014 so the row is neither inserted nor entered into a running competition nor announced. Echoes only arise when the request carries a tables array (see the request body)."
+                                        },
+                                        "ignored": {
+                                            "type": "integer",
+                                            "description": "Empty cabinet slots: entries whose initials hold no letter or digit (\"   \", \"---\", \"\")"
+                                        },
+                                        "rejected": {
+                                            "type": "integer"
+                                        },
+                                        "new_tables": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "results": {
+                                            "type": "array",
+                                            "description": "One entry per submitted row, in the order they were sent",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "index": {
+                                                        "type": "integer"
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "inserted",
+                                                            "duplicate",
+                                                            "echo",
+                                                            "ignored",
+                                                            "rejected"
+                                                        ],
+                                                        "description": "inserted: stored as a new row. duplicate: the server already holds this exact row. echo: the board has not moved since the cabinet last reported it, so the row was not treated as newly achieved (no insert, no competition entry, no Slack). ignored: an empty cabinet slot. rejected: a malformed row \u2014 see reason."
+                                                    },
+                                                    "id": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "description": "Row id of the stored score \u2014 the existing row when the entry was a duplicate"
+                                                    },
+                                                    "table": {
+                                                        "type": "string"
+                                                    },
+                                                    "category": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "description": "The slug the entry was stored under \u2014 null for the main leaderboard"
+                                                    },
+                                                    "initials": {
+                                                        "type": "string"
+                                                    },
+                                                    "value": {
+                                                        "type": "string",
+                                                        "description": "The value as stored \u2014 milliseconds for a duration"
+                                                    },
+                                                    "value_type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "score",
+                                                            "counter",
+                                                            "duration",
+                                                            "timestamp"
+                                                        ],
+                                                        "default": "score",
+                                                        "description": "How the bigint value should be read. score: the score itself. counter: how many. duration: whole MILLISECONDS (not seconds \u2014 cabinet fields such as the Lord of the Rings ring timer count hundredths of a second, and milliseconds keep those exact while the value stays an integer). timestamp: epoch seconds, UTC."
+                                                    },
+                                                    "value_unit": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "enum": [
+                                                            "ms",
+                                                            "cs",
+                                                            "ds",
+                                                            "s",
+                                                            "m",
+                                                            "h",
+                                                            null
+                                                        ],
+                                                        "description": "Duration unit. On submission it is the unit of the value being sent (default ms) and is remembered as the category's native_unit; on output it is the unit the value is stored in \u2014 always \"ms\" for a duration, \"s\" for a timestamp, null otherwise."
+                                                    },
+                                                    "map_version": {
+                                                        "type": "string",
+                                                        "description": "Hash/version of the NVRAM memory map that produced the row. Never part of the dedup key: submitting the same board under a corrected map is still a batch of duplicates, not a new board.",
+                                                        "example": "e3b0c44298fc"
+                                                    },
+                                                    "extractor_version": {
+                                                        "type": "string",
+                                                        "description": "Version of the CLI that submitted the row",
+                                                        "example": "cli-1.4.2"
+                                                    },
+                                                    "source_slot": {
+                                                        "type": "string",
+                                                        "description": "The physical slot the value was read from \u2014 rank is derived, so the slot is otherwise lost",
+                                                        "example": "Q Continuum #3"
+                                                    },
+                                                    "reason": {
+                                                        "type": "string",
+                                                        "description": "Why the entry was rejected or ignored"
+                                                    },
+                                                    "input": {
+                                                        "description": "The entry as received, on a rejection or an ignored empty slot"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Accepted, at least one new score stored",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "received": {
+                                            "type": "integer"
+                                        },
+                                        "inserted": {
+                                            "type": "integer"
+                                        },
+                                        "duplicates": {
+                                            "type": "integer"
+                                        },
+                                        "echoes": {
+                                            "type": "integer",
+                                            "description": "Rows that were not treated as newly achieved because the board they belong to has not moved since the cabinet last reported it. Distinct from duplicates: a duplicate means the server already holds this exact row, whereas an echo means the machine is simply re-reporting a board the server already knew it was showing \u2014 so the row is neither inserted nor entered into a running competition nor announced. Echoes only arise when the request carries a tables array (see the request body)."
+                                        },
+                                        "ignored": {
+                                            "type": "integer",
+                                            "description": "Empty cabinet slots: entries whose initials hold no letter or digit (\"   \", \"---\", \"\")"
+                                        },
+                                        "rejected": {
+                                            "type": "integer"
+                                        },
+                                        "new_tables": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "results": {
+                                            "type": "array",
+                                            "description": "One entry per submitted row, in the order they were sent",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "index": {
+                                                        "type": "integer"
+                                                    },
+                                                    "status": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "inserted",
+                                                            "duplicate",
+                                                            "echo",
+                                                            "ignored",
+                                                            "rejected"
+                                                        ],
+                                                        "description": "inserted: stored as a new row. duplicate: the server already holds this exact row. echo: the board has not moved since the cabinet last reported it, so the row was not treated as newly achieved (no insert, no competition entry, no Slack). ignored: an empty cabinet slot. rejected: a malformed row \u2014 see reason."
+                                                    },
+                                                    "id": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "description": "Row id of the stored score \u2014 the existing row when the entry was a duplicate"
+                                                    },
+                                                    "table": {
+                                                        "type": "string"
+                                                    },
+                                                    "category": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "description": "The slug the entry was stored under \u2014 null for the main leaderboard"
+                                                    },
+                                                    "initials": {
+                                                        "type": "string"
+                                                    },
+                                                    "value": {
+                                                        "type": "string",
+                                                        "description": "The value as stored \u2014 milliseconds for a duration"
+                                                    },
+                                                    "value_type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "score",
+                                                            "counter",
+                                                            "duration",
+                                                            "timestamp"
+                                                        ],
+                                                        "default": "score",
+                                                        "description": "How the bigint value should be read. score: the score itself. counter: how many. duration: whole MILLISECONDS (not seconds \u2014 cabinet fields such as the Lord of the Rings ring timer count hundredths of a second, and milliseconds keep those exact while the value stays an integer). timestamp: epoch seconds, UTC."
+                                                    },
+                                                    "value_unit": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
+                                                        "enum": [
+                                                            "ms",
+                                                            "cs",
+                                                            "ds",
+                                                            "s",
+                                                            "m",
+                                                            "h",
+                                                            null
+                                                        ],
+                                                        "description": "Duration unit. On submission it is the unit of the value being sent (default ms) and is remembered as the category's native_unit; on output it is the unit the value is stored in \u2014 always \"ms\" for a duration, \"s\" for a timestamp, null otherwise."
+                                                    },
+                                                    "map_version": {
+                                                        "type": "string",
+                                                        "description": "Hash/version of the NVRAM memory map that produced the row. Never part of the dedup key: submitting the same board under a corrected map is still a batch of duplicates, not a new board.",
+                                                        "example": "e3b0c44298fc"
+                                                    },
+                                                    "extractor_version": {
+                                                        "type": "string",
+                                                        "description": "Version of the CLI that submitted the row",
+                                                        "example": "cli-1.4.2"
+                                                    },
+                                                    "source_slot": {
+                                                        "type": "string",
+                                                        "description": "The physical slot the value was read from \u2014 rank is derived, so the slot is otherwise lost",
+                                                        "example": "Q Continuum #3"
+                                                    },
+                                                    "reason": {
+                                                        "type": "string",
+                                                        "description": "Why the entry was rejected or ignored"
+                                                    },
+                                                    "input": {
+                                                        "description": "The entry as received, on a rejection or an ignored empty slot"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The body contained no entries at all"
+                    },
+                    "401": {
+                        "description": "Missing or wrong API key"
+                    }
+                }
+            }
+        },
+        "/api/scores/{table}": {
+            "get": {
+                "summary": "Scores for one table \u2014 category, initials, value",
+                "parameters": [
+                    {
+                        "name": "table",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Table id or alias"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "default": 10,
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 1000
+                                },
+                                {
+                                    "type": "string",
+                                    "enum": [
+                                        "shown",
+                                        "all"
+                                    ]
+                                }
+                            ]
+                        },
+                        "description": "Rows kept per category. \"slots\" gives the cabinet's own slot count per category, \"shown\" follows the website setting, \"all\" removes the cut."
+                    },
+                    {
+                        "name": "format",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "text",
+                                "json"
+                            ],
+                            "default": "text"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Score list"
+                    },
+                    "404": {
+                        "description": "Unknown table"
+                    }
+                }
+            }
+        },
+        "/api/tables": {
+            "get": {
+                "summary": "All visible tables with their current scoreboards",
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 1000
+                                },
+                                {
+                                    "type": "string",
+                                    "enum": [
+                                        "all"
+                                    ]
+                                }
+                            ]
+                        },
+                        "description": "Rows per category. Omitted means each category's own rows_shown \u2014 ten for a main leaderboard, three for an achievement category unless an admin changed it."
+                    },
+                    {
+                        "name": "include_hidden",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tables, grouped categories and players"
+                    }
+                }
+            }
+        },
+        "/api/tables/{id}": {
+            "get": {
+                "summary": "One table, full board plus competition history",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Table board"
+                    },
+                    "404": {
+                        "description": "Unknown table"
+                    }
+                }
+            }
+        },
+        "/api/players": {
+            "get": {
+                "summary": "Initials mapped to office people",
+                "responses": {
+                    "200": {
+                        "description": "Players"
+                    }
+                }
+            }
+        },
+        "/api/images/machines/{table}/{width}.jpg": {
+            "get": {
+                "summary": "A table's playfield photo, downscaled",
+                "description": "The machine picture rendered at (at most) the requested width and cached. Never enlarged: asking for a width above the original returns the original. Any other width is snapped to the nearest supported one (see /api/images/support). Public and permanent \u2014 Slack announcements point at this so the photo can be drawn smaller than full width.",
+                "parameters": [
+                    {
+                        "name": "table",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "width",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 480
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "JPEG image",
+                        "content": {
+                            "image/jpeg": {}
+                        }
+                    },
+                    "302": {
+                        "description": "The source image could not be rendered; redirected to it instead"
+                    },
+                    "404": {
+                        "description": "Unknown table, or it has no picture"
+                    }
+                }
+            }
+        },
+        "/api/images/support": {
+            "get": {
+                "summary": "Which picture widths this build can render",
+                "responses": {
+                    "200": {
+                        "description": "{ resize, widths }"
+                    }
+                }
+            }
+        },
+        "/api/competitions": {
+            "get": {
+                "summary": "Competitions, running and finished",
+                "responses": {
+                    "200": {
+                        "description": "Competitions"
+                    }
+                }
+            }
+        },
+        "/api/claims/options": {
+            "get": {
+                "summary": "What the public claim form needs",
+                "description": "Whether claiming is on, the allowed email domains, and every initials known \u2014 those seen on a board plus any already mapped to a person, each with its score count (0 for a pre-registered set).",
+                "responses": {
+                    "200": {
+                        "description": "Claim policy and initials"
+                    }
+                }
+            }
+        },
+        "/api/claims": {
+            "post": {
+                "summary": "Claim initials as yours (no login, trust-based)",
+                "description": "A visitor states which initials are theirs and gives a name and an allowed work email address. Unclaimed initials are mapped immediately (status approved); initials someone else already holds return status pending for an admin to resolve. Initials that hold no scores yet can be claimed too, so someone can pre-register before their first game \u2014 has_scores says which case it was. Scores are never modified.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "initials",
+                                    "name",
+                                    "email",
+                                    "confirm"
+                                ],
+                                "properties": {
+                                    "initials": {
+                                        "type": "string",
+                                        "example": "ABC"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "First Last"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "example": "name@forteadvice.com"
+                                    },
+                                    "confirm": {
+                                        "type": "boolean",
+                                        "description": "Must be true \u2014 the claimer swears the scores are theirs"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Claim recorded \u2014 status approved or pending"
+                    },
+                    "400": {
+                        "description": "Missing field, unusable initials, disallowed email domain, or unconfirmed"
+                    },
+                    "403": {
+                        "description": "Claiming is switched off"
+                    },
+                    "429": {
+                        "description": "Too many claims from one address"
+                    }
+                }
+            }
+        },
+        "/api/auth/config": {
+            "get": {
+                "summary": "Auth0 settings the admin UI needs to start a login",
+                "responses": {
+                    "200": {
+                        "description": "Domain, client id, callback URLs"
+                    }
+                }
+            }
+        },
+        "/api/auth/exchange": {
+            "post": {
+                "summary": "Exchange an Auth0 authorization code (PKCE) for an ID token",
+                "responses": {
+                    "200": {
+                        "description": "Token and profile"
+                    },
+                    "401": {
+                        "description": "Login failed"
+                    }
+                }
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "summary": "Who the bearer token belongs to, and whether they may administer",
+                "responses": {
+                    "200": {
+                        "description": "Profile"
+                    },
+                    "401": {
+                        "description": "Not signed in"
+                    }
+                }
+            }
+        },
+        "/api/admin/overview": {
+            "get": {
+                "summary": "Everything the admin screen needs",
+                "responses": {
+                    "200": {
+                        "description": "Machines, players, aliases, competitions, unmatched initials"
+                    }
+                }
+            }
+        },
+        "/api/admin/players/{initials}": {
+            "put": {
+                "summary": "Map initials to a person",
+                "responses": {
+                    "200": {
+                        "description": "Saved"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Remove a mapping",
+                "responses": {
+                    "200": {
+                        "description": "Deleted"
+                    }
+                }
+            }
+        },
+        "/api/admin/tables": {
+            "post": {
+                "summary": "Register a table",
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    }
+                }
+            }
+        },
+        "/api/admin/tables/{id}": {
+            "patch": {
+                "summary": "Rename / re-image / show / hide a table",
+                "responses": {
+                    "200": {
+                        "description": "Saved"
+                    }
+                }
+            }
+        },
+        "/api/admin/tables/{id}/merge-into/{target}": {
+            "post": {
+                "summary": "Move all scores of one table id onto another and alias the old id",
+                "responses": {
+                    "200": {
+                        "description": "Merged"
+                    }
+                }
+            }
+        },
+        "/api/admin/categories": {
+            "get": {
+                "summary": "Categories per table with score counts, typing and metadata",
+                "parameters": [
+                    {
+                        "name": "table",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Categories"
+                    }
+                }
+            }
+        },
+        "/api/admin/categories/{table}/{key}": {
+            "put": {
+                "summary": "Set a category label, value_type, display_suffix and rows_shown",
+                "description": "The key in the path is the category slug; use \"main\" for the ranked leaderboard. Setting a label only changes what the website prints \u2014 it never moves a score.",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "label": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "value_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "score",
+                                            "counter",
+                                            "duration",
+                                            "timestamp"
+                                        ],
+                                        "default": "score",
+                                        "description": "How the bigint value should be read. score: the score itself. counter: how many. duration: whole MILLISECONDS (not seconds \u2014 cabinet fields such as the Lord of the Rings ring timer count hundredths of a second, and milliseconds keep those exact while the value stays an integer). timestamp: epoch seconds, UTC."
+                                    },
+                                    "native_unit": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "enum": [
+                                            "ms",
+                                            "cs",
+                                            "ds",
+                                            "s",
+                                            "m",
+                                            "h",
+                                            null
+                                        ],
+                                        "description": "Durations only: the unit of the cabinet field this category comes from"
+                                    },
+                                    "display_suffix": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "rows_shown": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 1,
+                                        "maximum": 100,
+                                        "description": "How many places of this board the website lists, and how far down a new score is still announced in Slack. Null restores the default (10 for the main board, 3 otherwise). Presentation only: every row is kept."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Saved"
+                    },
+                    "400": {
+                        "description": "Unknown value_type"
+                    }
+                }
+            }
+        },
+        "/api/admin/categories/{table}/{key}/merge-into/{target}": {
+            "post": {
+                "summary": "Collapse one category into another (existing rows and future submissions)",
+                "responses": {
+                    "200": {
+                        "description": "Merged"
+                    },
+                    "404": {
+                        "description": "Unknown table"
+                    }
+                }
+            }
+        },
+        "/api/admin/categories/{table}/aliases/{key}": {
+            "delete": {
+                "summary": "Stop collapsing a category name",
+                "responses": {
+                    "200": {
+                        "description": "Deleted"
+                    }
+                }
+            }
+        },
+        "/api/admin/aliases": {
+            "post": {
+                "summary": "Point another table id at an existing scoreboard",
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    }
+                }
+            }
+        },
+        "/api/admin/aliases/{alias}": {
+            "delete": {
+                "summary": "Remove an alias",
+                "responses": {
+                    "200": {
+                        "description": "Deleted"
+                    }
+                }
+            }
+        },
+        "/api/admin/competitions": {
+            "post": {
+                "summary": "Start a competition \u2014 the table board shows only scores set from now on",
+                "responses": {
+                    "201": {
+                        "description": "Started"
+                    },
+                    "409": {
+                        "description": "Already running"
+                    }
+                }
+            }
+        },
+        "/api/admin/competitions/{id}/end": {
+            "post": {
+                "summary": "End a competition \u2014 old and competition scores merge back together",
+                "responses": {
+                    "200": {
+                        "description": "Ended"
+                    }
+                }
+            }
+        },
+        "/api/admin/notifications": {
+            "get": {
+                "summary": "Slack announcement outbox, plus whether a posting transport is available",
+                "description": "Announcements are composed and stored before they are sent. Foundry holds the workspace Slack credential and posts on the app's behalf: delivery is an authenticated slack.post_message tool call to the Foundry MCP Gateway, never a webhook or a key handed to this app. The target channel is resolved to an approved channel id via slack.channels, which is live authorization state rather than configuration. A rate limit or platform outage leaves a message queued for the next drain; a terminal refusal (channel_not_allowed, validation_error, not_entitled) marks it failed instead of retrying forever.",
+                "responses": {
+                    "200": {
+                        "description": "Transport status, settings and recent messages"
+                    }
+                }
+            }
+        },
+        "/api/admin/notifications/test": {
+            "post": {
+                "summary": "Post a test message to the configured channel",
+                "responses": {
+                    "201": {
+                        "description": "Queued or sent"
+                    }
+                }
+            }
+        },
+        "/api/admin/notifications/flush": {
+            "post": {
+                "summary": "Retry every announcement still waiting",
+                "responses": {
+                    "200": {
+                        "description": "Tried"
+                    }
+                }
+            }
+        },
+        "/api/admin/notifications/{id}/retry": {
+            "post": {
+                "summary": "Retry one announcement",
+                "responses": {
+                    "200": {
+                        "description": "Attempted"
+                    }
+                }
+            }
+        },
+        "/api/admin/notifications/{id}": {
+            "delete": {
+                "summary": "Discard an announcement",
+                "responses": {
+                    "200": {
+                        "description": "Deleted"
+                    }
+                }
+            }
+        },
+        "/api/admin/scores": {
+            "get": {
+                "summary": "Raw score rows, newest first, with provenance",
+                "description": "Each row carries map_version, extractor_version and source_slot, plus sightings (how many runs have reported it) and reconfirmed (another map_version has since reported the same row). Any filter may be set to \"@none\" to match rows stored without that field.",
+                "parameters": [
+                    {
+                        "name": "table",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Category slug; \"main\" or \"null\" for the main board"
+                    },
+                    {
+                        "name": "initials",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "map_version",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "extractor_version",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "source_slot",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "source",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 200,
+                            "maximum": 1000
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Rows"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Retract a bad extraction run in bulk",
+                "description": "Scoped by provenance \u2014 at least one of map_version, extractor_version or source_slot is required, and \"@none\" matches rows stored before provenance existed. The same table / category / initials filters as the GET narrow it further. Without confirm=true nothing is deleted: the response reports how many rows match, a per-table/category breakdown, how many of them another run has also reported, and a sample. With confirm=true a reason is required; the removed rows are kept on the audit record so the retraction can be restored.",
+                "parameters": [
+                    {
+                        "name": "map_version",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "extractor_version",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "source_slot",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "table",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "initials",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "skip_reconfirmed",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": "Keep rows another map_version has also reported since"
+                    },
+                    {
+                        "name": "confirm",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": "Without this the call is a dry run and deletes nothing"
+                    },
+                    {
+                        "name": "reason",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Required when confirm=true"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dry-run counts, or the result of the retraction",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "dry_run": {
+                                            "type": "boolean"
+                                        },
+                                        "filters": {
+                                            "type": "object"
+                                        },
+                                        "matched": {
+                                            "type": "integer"
+                                        },
+                                        "reconfirmed_by_another_run": {
+                                            "type": "integer"
+                                        },
+                                        "by_table": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "table": {
+                                                        "type": "string"
+                                                    },
+                                                    "category": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "count": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "removed": {
+                                            "type": "integer"
+                                        },
+                                        "retraction_id": {
+                                            "type": [
+                                                "integer",
+                                                "null"
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Not scoped by provenance, or confirmed without a reason"
+                    }
+                }
+            }
+        },
+        "/api/admin/provenance": {
+            "get": {
+                "summary": "Extraction runs present in the database",
+                "description": "map_version + extractor_version grouped, with row counts, tables touched and first/last seen.",
+                "responses": {
+                    "200": {
+                        "description": "Runs"
+                    }
+                }
+            }
+        },
+        "/api/admin/retractions": {
+            "get": {
+                "summary": "Audit log of bulk retractions",
+                "responses": {
+                    "200": {
+                        "description": "Retractions"
+                    }
+                }
+            }
+        },
+        "/api/admin/retractions/{id}/restore": {
+            "post": {
+                "summary": "Re-insert the rows a retraction removed",
+                "responses": {
+                    "200": {
+                        "description": "Restored"
+                    },
+                    "404": {
+                        "description": "Unknown retraction"
+                    },
+                    "409": {
+                        "description": "Already restored"
+                    }
+                }
+            }
+        },
+        "/api/admin/scores/{id}": {
+            "delete": {
+                "summary": "Delete a bogus score row",
+                "responses": {
+                    "200": {
+                        "description": "Deleted"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "apiKey": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-API-Key"
+            },
+            "adminBearer": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "Auth0 ID token \u2014 /api/admin/* requires a signed-in administrator"
+            }
+        },
+        "schemas": {
+            "Score": {
+                "type": "object",
+                "properties": {
+                    "table": {
+                        "type": "string",
+                        "example": "mm_109c"
+                    },
+                    "category": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The category SLUG, exactly as the cabinet memory maps spell it (lowercase, underscores). null is the machine's main ranked leaderboard \u2014 slug \"main\" \u2014 into which GRAND CHAMPION / HIGH SCORES / HONOR ROLL / \u2026 all collapse, rank derived from the score order. Empty first column in the text format.",
+                        "example": "madness_champion"
+                    },
+                    "slug": {
+                        "type": "string",
+                        "description": "The same slug, never null: \"main\" for the ranked leaderboard.",
+                        "example": "main"
+                    },
+                    "label": {
+                        "type": "string",
+                        "description": "Display name only \u2014 the machine's wording, admin-editable. Never use it as a key.",
+                        "example": "Madness Champion"
+                    },
+                    "slots": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "How many places the cabinet itself keeps for this category, from its memory map.",
+                        "example": 5
+                    },
+                    "ordering": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "ranked",
+                            "positional",
+                            null
+                        ],
+                        "description": "\"ranked\" \u2014 position comes from the value. \"positional\" \u2014 the machine's slots are their own thing (Medieval Madness keeps four King of the Realm slots). Metadata; output is ranked by value either way."
+                    },
+                    "value_type": {
+                        "type": "string",
+                        "enum": [
+                            "score",
+                            "counter",
+                            "duration",
+                            "timestamp"
+                        ],
+                        "default": "score",
+                        "description": "How the bigint value should be read. score: the score itself. counter: how many. duration: whole MILLISECONDS (not seconds \u2014 cabinet fields such as the Lord of the Rings ring timer count hundredths of a second, and milliseconds keep those exact while the value stays an integer). timestamp: epoch seconds, UTC."
+                    },
+                    "value_unit": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "ms",
+                            "cs",
+                            "ds",
+                            "s",
+                            "m",
+                            "h",
+                            null
+                        ],
+                        "description": "Duration unit. On submission it is the unit of the value being sent (default ms) and is remembered as the category's native_unit; on output it is the unit the value is stored in \u2014 always \"ms\" for a duration, \"s\" for a timestamp, null otherwise."
+                    },
+                    "native_unit": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The unit the cabinet's own field counts in, when a submission or an admin has declared it (e.g. \"cs\" for a hundredths-of-a-second NVRAM timer). Divide the stored millisecond value by the unit to reproduce the exact integer the machine expects: 12340 ms / 10 = 1234 cs. Metadata only \u2014 it never changes how a submitted value is read.",
+                        "example": "cs"
+                    },
+                    "display_suffix": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "example": "Castles Destroyed"
+                    },
+                    "rank": {
+                        "type": "integer",
+                        "description": "1-based position inside the category",
+                        "example": 1
+                    },
+                    "initials": {
+                        "type": "string",
+                        "example": "MHP"
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "int64 as a string, to keep full precision. Read it according to value_type: a score or counter as-is, a duration as whole milliseconds, a timestamp as epoch seconds.",
+                        "example": "89407424"
+                    },
+                    "score": {
+                        "type": "string",
+                        "description": "Legacy name for value \u2014 same int64 string"
+                    },
+                    "display": {
+                        "type": "string",
+                        "description": "The value formatted the way the website prints it, suffix included",
+                        "example": "0:00:12.34"
+                    },
+                    "metadata": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Opaque per-row annotation the cabinet reads alongside the value, stored and returned VERBATIM as a string map. Medieval Madness' Kings of the Realm sends crowned_at (the coronation date the DMD shows \u2014 wall clock with no timezone, \"YYYY-MM-DD HH:MM\"; it is never parsed, converted or given an offset) and crowned_count (how many times that player has been crowned, a decimal integer as a string). Never part of the dedup key: same table+category+initials+value is the same coronation whatever the metadata reads. Absent for every other category.",
+                        "example": {
+                            "crowned_at": "2026-06-14 20:41",
+                            "crowned_count": "2"
+                        }
+                    },
+                    "submitted_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the API first saw the score, not when it was achieved"
+                    }
+                }
+            }
+        }
+    }
+}

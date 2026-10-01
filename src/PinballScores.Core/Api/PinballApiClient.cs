@@ -18,7 +18,7 @@ public sealed class PinballApiOptions
 }
 
 /// <summary>
-/// Talks to the Foundry pinball API. Submission is insert-only and idempotent —
+/// Talks to the pinball scores API (self-hosted, pinball-scores-web). Submission is insert-only and idempotent —
 /// resubmitting the current board is the normal case, and the server deduplicates
 /// on (table, category, initials, value).
 /// </summary>

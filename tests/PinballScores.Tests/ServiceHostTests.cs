@@ -27,11 +27,14 @@ public class ServiceHostTests
             var options = new SyncOptions();
             builder.Configuration.GetSection(SyncOptions.SectionName).Bind(options);
 
-            // The packaged appsettings.json ships an API base URL; reading it proves
+            // The packaged appsettings.json ships an nvram path; reading it proves
             // the file was located relative to the binary rather than the CWD.
-            Assert.False(string.IsNullOrWhiteSpace(options.ApiBaseUrl),
+            Assert.False(string.IsNullOrWhiteSpace(options.NvramPath),
                 "appsettings.json was not found from a foreign working directory");
-            Assert.Empty(options.Validate());
+
+            // The API address is deliberately not packaged — it is per-cabinet — so
+            // that is the one thing an unconfigured install is missing.
+            Assert.Equal([$"{SyncOptions.SectionName}:ApiBaseUrl is required"], options.Validate());
         }
         finally
         {
