@@ -11,6 +11,7 @@ internal sealed class StubHandler : HttpMessageHandler
 {
     private readonly HttpStatusCode _status;
     private readonly string _body;
+    private readonly string _mediaType;
 
     public List<HttpRequestMessage> Requests { get; } = [];
     public List<string?> Bodies { get; } = [];
@@ -18,10 +19,11 @@ internal sealed class StubHandler : HttpMessageHandler
     public HttpRequestMessage? LastRequest => Requests.Count == 0 ? null : Requests[^1];
     public string? LastBody => Bodies.Count == 0 ? null : Bodies[^1];
 
-    public StubHandler(string body, HttpStatusCode status = HttpStatusCode.OK)
+    public StubHandler(string body, HttpStatusCode status = HttpStatusCode.OK, string mediaType = "application/json")
     {
         _body = body;
         _status = status;
+        _mediaType = mediaType;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -31,7 +33,8 @@ internal sealed class StubHandler : HttpMessageHandler
 
         return new HttpResponseMessage(_status)
         {
-            Content = new StringContent(_body, Encoding.UTF8, "application/json"),
+            Content = new StringContent(_body, Encoding.UTF8, _mediaType),
+            RequestMessage = request,
         };
     }
 }
@@ -232,6 +235,24 @@ public class PinballApiClientTests
         var ex = await Assert.ThrowsAsync<PinballApiException>(
             () => client.SubmitAsync(["t"], [new ScoreEntry("t", null, "AAA", 1)]));
         Assert.Contains("401", ex.Message);
+    }
+
+    [Fact]
+    public async Task ALoginPageInsteadOfJsonNamesWhereTheRequestLanded()
+    {
+        // A forward-auth proxy answers 302 to its login page, HttpClient follows it,
+        // and the client is handed a 200 full of HTML. That must not surface as a
+        // bare "'<' is an invalid start of a value".
+        var handler = new StubHandler("<!DOCTYPE html><html>Sign in</html>", mediaType: "text/html");
+        using var client = Client(handler);
+
+        var read = await Assert.ThrowsAsync<PinballApiException>(() => client.GetBoardAsync("t", 5));
+        Assert.Contains("text/html", read.Message);
+        Assert.Contains("https://example.test/api/scores", read.Message);
+
+        var submit = await Assert.ThrowsAsync<PinballApiException>(
+            () => client.SubmitAsync(["t"], [new ScoreEntry("t", null, "AAA", 1)]));
+        Assert.Contains("text/html", submit.Message);
     }
 
     [Fact]

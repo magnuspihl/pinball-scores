@@ -74,6 +74,7 @@ public sealed class PinballApiClient : IDisposable
             throw new PinballApiException($"submit failed with {(int)response.StatusCode}: {Trim(body)}");
         }
 
+        await EnsureJsonAsync(response, "submit", cancellationToken).ConfigureAwait(false);
         return await response.Content.ReadFromJsonAsync<SubmitResponse>(Json, cancellationToken)
             .ConfigureAwait(false);
     }
@@ -96,8 +97,29 @@ public sealed class PinballApiClient : IDisposable
             throw new PinballApiException($"read failed with {(int)response.StatusCode}: {Trim(body)}");
         }
 
+        await EnsureJsonAsync(response, "read", cancellationToken).ConfigureAwait(false);
         return await response.Content.ReadFromJsonAsync<List<RemoteScore>>(Json, cancellationToken)
             .ConfigureAwait(false) ?? [];
+    }
+
+    /// <summary>
+    /// A 2xx that isn't JSON is almost always a login page or web front end that
+    /// HttpClient reached by silently following a redirect. Name where it ended up
+    /// instead of letting the deserializer fail on the first '&lt;'.
+    /// </summary>
+    private static async Task EnsureJsonAsync(
+        HttpResponseMessage response,
+        string operation,
+        CancellationToken cancellationToken)
+    {
+        var mediaType = response.Content.Headers.ContentType?.MediaType;
+        if (mediaType is not null && mediaType.Contains("json", StringComparison.OrdinalIgnoreCase)) return;
+
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        throw new PinballApiException(
+            $"{operation} got {(int)response.StatusCode} {mediaType ?? "with no content type"} instead of JSON " +
+            $"from {response.RequestMessage?.RequestUri}. Is the API behind a login proxy, or is ApiBaseUrl " +
+            $"pointing at the website rather than the API? {Trim(body)}");
     }
 
     private static string Trim(string body) => body.Length <= 300 ? body : body[..300] + "…";
