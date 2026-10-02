@@ -25,8 +25,12 @@ public sealed class SyncOptions
     /// <summary>
     /// True when <see cref="ApiBaseUrl"/> is still the Foundry staging API, which was
     /// retired when the API moved to self-hosting. Settings seeded before the move
-    /// hold it, and they survive every update, so a cabinet can keep running against
-    /// a dead host with nothing but failed syncs to show for it.
+    /// hold it, and they survive every update.
+    ///
+    /// The host is not dead, which is what makes it dangerous: staging kept
+    /// answering after the move, with the pre-move board still on it. A cabinet
+    /// left pointing there syncs "successfully" — and write-back copies that stale
+    /// board onto the machines, while clears made on the real API never arrive.
     /// </summary>
     public bool UsesRetiredFoundryApi =>
         Uri.TryCreate(ApiBaseUrl, UriKind.Absolute, out var api)

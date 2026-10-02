@@ -118,6 +118,22 @@ public class WriteBackTests
         var second = await writer.WriteAsync("smanve_101", board);
         Assert.False(second.Applied);
         Assert.Equal("already up to date", second.Skipped);
+        Assert.False(second.Failed);
+    }
+
+    [Fact]
+    public async Task AWriteThatCannotLandIsAFailureNotARoutineSkip()
+    {
+        // Routine skips are logged at debug every run; a failure leaves the machine
+        // behind the API and is logged as a warning, so the two must be told apart.
+        var dir = CopyNvram("smanve_101");
+        Directory.CreateDirectory(Path.Combine(dir, "smanve_101.nv.tmp"));
+
+        var result = await new NvramScoreWriter(TestData.Catalog, dir).WriteAsync("smanve_101", []);
+
+        Assert.False(result.Applied);
+        Assert.True(result.Failed, result.Skipped);
+        Assert.StartsWith("write failed", result.Skipped);
     }
 
     [Fact]

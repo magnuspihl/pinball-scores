@@ -47,7 +47,7 @@ public static class ServiceHost
 
         if (options.UsesRetiredFoundryApi)
             log.LogWarning(
-                "ApiBaseUrl is the retired Foundry API and every sync will fail. Set it to the self-hosted API in {Machine}",
+                "ApiBaseUrl is the retired Foundry API, so every run will be refused. Set it to the self-hosted API in {Machine}",
                 MachineSettingsPath);
     }
 

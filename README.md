@@ -201,8 +201,13 @@ A cabinet installed before the move still has the retired Foundry staging URL in
 `C:\ProgramData\PinballScores\appsettings.json`. Updates never touch that file,
 so it has to be changed by hand — set `ApiBaseUrl` to the self-hosted API and
 clear `ApiKey` unless the server sets one — then restart the service. Until then
-every sync fails; the log says so at startup, and the install script refuses to
+every run is refused with an error in the log, and the install script refuses to
 start the service against that host.
+
+Refused, not merely failing: Foundry staging kept answering after the move, with
+the pre-move board on it. A cabinet still pointed there synced cleanly, ignored
+every clear made on the self-hosted API, and wrote staging's old board back onto
+the machines.
 
 | Setting | Meaning |
 | --- | --- |

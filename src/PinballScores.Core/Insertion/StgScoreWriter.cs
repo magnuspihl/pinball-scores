@@ -79,14 +79,14 @@ public sealed class StgScoreWriter : IScoreWriter
                 return Task.FromResult(new WriteResult(table, Applied: false, planned, "already up to date"));
 
             if (Verify(temporary, map, plan) is { } mismatch)
-                return Task.FromResult(WriteResult.Skip(table, $"write verification failed: {mismatch}"));
+                return Task.FromResult(WriteResult.Fail(table, $"write verification failed: {mismatch}"));
 
             File.Copy(temporary, _path, overwrite: true);
             return Task.FromResult(new WriteResult(table, Applied: true, planned));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
-            return Task.FromResult(WriteResult.Skip(table, $"write failed: {ex.Message}"));
+            return Task.FromResult(WriteResult.Fail(table, $"write failed: {ex.Message}"));
         }
         finally
         {

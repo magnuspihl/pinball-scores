@@ -96,7 +96,7 @@ public sealed class NvramScoreWriter : IScoreWriter
                 .Where(a => !failures.Any(f => string.Equals(f.Category, a.Category, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
             if (Verify(map, updated, applied) is { } mismatch)
-                return Task.FromResult(WriteResult.Skip(table, $"write verification failed: {mismatch}"));
+                return Task.FromResult(WriteResult.Fail(table, $"write verification failed: {mismatch}"));
 
             if (updated.AsSpan().SequenceEqual(original))
                 return Task.FromResult(new WriteResult(table, Applied: false, planned, "already up to date"));
@@ -107,7 +107,7 @@ public sealed class NvramScoreWriter : IScoreWriter
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
                                       or ArgumentOutOfRangeException or NotSupportedException)
         {
-            return Task.FromResult(WriteResult.Skip(table, $"write failed: {ex.Message}"));
+            return Task.FromResult(WriteResult.Fail(table, $"write failed: {ex.Message}"));
         }
     }
 
