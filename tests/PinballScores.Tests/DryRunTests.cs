@@ -153,6 +153,33 @@ public class DryRunTests
     }
 
     [Fact]
+    public async Task TheRetiredFoundryApiIsNeverSyncedWith()
+    {
+        // Staging still answers with the pre-move board. Syncing against it looks
+        // healthy while writing that board onto the machines, so nothing may be
+        // sent to it or written from it.
+        var nvram = Directory.CreateTempSubdirectory("e2e-foundry-").FullName;
+        File.WriteAllBytes(Path.Combine(nvram, "smanve_101.nv"), TestData.Nvram("smanve_101"));
+        var before = File.ReadAllBytes(Path.Combine(nvram, "smanve_101.nv"));
+
+        var handler = new StubHandler("[]");
+        var options = new SyncOptions
+        {
+            NvramPath = nvram,
+            ApiBaseUrl = "https://foundryappsstaginggreg6bwp-pinball.functions.fnc.fr-par.scw.cloud/api",
+            EnableWriteBack = true,
+        };
+
+        var report = await ScoreSyncRunner
+            .Create(options, NullLoggerFactory.Instance, new HttpClient(handler))
+            .RunAsync();
+
+        Assert.Empty(handler.Requests);
+        Assert.Equal(0, report.TablesWritten);
+        Assert.Equal(before, File.ReadAllBytes(Path.Combine(nvram, "smanve_101.nv")));
+    }
+
+    [Fact]
     public async Task PlaceholderScoresAreNeverSubmitted()
     {
         // Guards the clearing procedure: once a machine is blanked, running the tool

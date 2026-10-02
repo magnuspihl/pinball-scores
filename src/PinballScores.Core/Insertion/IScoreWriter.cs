@@ -4,9 +4,15 @@ namespace PinballScores.Core.Insertion;
 
 /// <summary>What a write-back attempt did, or would have done.</summary>
 /// <param name="Planned">Human-readable description of each slot assignment.</param>
-public sealed record WriteResult(string Table, bool Applied, IReadOnlyList<string> Planned, string? Skipped = null)
+/// <param name="Failed">
+/// The write was attempted and did not land, as opposed to there being nothing to
+/// do. The machine is left behind the API, so this has to be visible in the log.
+/// </param>
+public sealed record WriteResult(string Table, bool Applied, IReadOnlyList<string> Planned, string? Skipped = null, bool Failed = false)
 {
     public static WriteResult Skip(string table, string reason) => new(table, false, [], reason);
+
+    public static WriteResult Fail(string table, string reason) => new(table, false, [], reason, Failed: true);
 }
 
 /// <summary>

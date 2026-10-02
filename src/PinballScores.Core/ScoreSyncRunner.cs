@@ -56,6 +56,18 @@ public sealed class ScoreSyncRunner
 
     public async Task<SyncReport> RunAsync(CancellationToken cancellationToken = default)
     {
+        // Refused per run rather than at startup, so the service stays up and an
+        // update can still reach the cabinet; fixing the setting takes effect on
+        // the next run without a restart.
+        if (_options.UsesRetiredFoundryApi)
+        {
+            _log.LogError(
+                "Not syncing: ApiBaseUrl is the retired Foundry API ({Api}). It still answers with the pre-move board, " +
+                "so syncing would submit to it and write that board onto the machines. Set ApiBaseUrl to the self-hosted API",
+                _options.ApiBaseUrl);
+            return new SyncReport(0, 0, 0, 0, 0, 0, 0);
+        }
+
         var (scores, tables, skipped) = Extract();
 
         _log.LogInformation("Read {Scores} scores from {Read} tables ({Skipped} skipped)",
@@ -169,9 +181,15 @@ public sealed class ScoreSyncRunner
                 "Submitted {Received} from {Tables} tables: {Inserted} new, {Duplicates} duplicate, {Echoes} echo, {Rejected} rejected",
                 response.Received, tables.Count, response.Inserted, response.Duplicates, response.Echoes, response.Rejected);
 
-            if (response.Echoes > 0)
+            // Echoes only resolve through write-back. With it off they recur on every
+            // run indefinitely, so say that rather than promising a correction.
+            if (response.Echoes > 0 && _options.EnableWriteBack)
                 _log.LogInformation(
                     "{Echoes} scores held back as unchanged since the last report — the machine is behind the API and write-back should correct it",
+                    response.Echoes);
+            else if (response.Echoes > 0)
+                _log.LogWarning(
+                    "{Echoes} scores held back as unchanged since the last report — the machine is behind the API, but EnableWriteBack is off so it will stay that way",
                     response.Echoes);
 
             foreach (var rejected in response.Results.Where(r => r.WasRejected))
@@ -219,7 +237,10 @@ public sealed class ScoreSyncRunner
                 var board = await _api.GetBoardAsync(table, slots, cancellationToken).ConfigureAwait(false);
                 var result = await writer.WriteAsync(table, board, _options.DryRun, cancellationToken).ConfigureAwait(false);
 
+                // "Already up to date" and "no map" are routine every run; a write that
+                // was attempted and did not land leaves the machine behind the API.
                 if (result.Applied) written++;
+                else if (result.Failed) _log.LogWarning("Write-back for {Table} failed: {Reason}", table, result.Skipped);
                 else _log.LogDebug("Write-back for {Table} not applied: {Reason}", table, result.Skipped);
 
                 // In a dry run the plan is the deliverable, so it is reported rather

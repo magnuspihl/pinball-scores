@@ -127,7 +127,15 @@ public sealed class UpdateChecker
 
             // Staged only. It lands after this process exits, so no swap can occur
             // while a run is in flight.
-            manager.WaitExitThenApplyUpdates(update);
+            //
+            // restart: false is essential. Velopack defaults to relaunching the exe
+            // itself, as a plain process outside the Service Manager, and the helper
+            // below then starts the real service as well: two instances, each with
+            // its own schedule and file watchers, both writing the same save files,
+            // and the stray one invisible and unstoppable from services.msc. Every
+            // update after that would add another. silent: true because no dialog
+            // may appear on the cabinet.
+            manager.WaitExitThenApplyUpdates(update, silent: true, restart: false);
             _pendingRestart = true;
 
             ScheduleRestart();

@@ -84,8 +84,8 @@ public sealed class SyncWorker : BackgroundService
             _log.LogInformation("Run starting ({Trigger})", trigger);
             var report = await _runner.RunAsync(stoppingToken).ConfigureAwait(false);
             _log.LogInformation(
-                "Run finished: {Found} scores, {Inserted} new, {Duplicates} duplicate, {Rejected} rejected",
-                report.ScoresFound, report.Inserted, report.Duplicates, report.Rejected);
+                "Run finished: {Found} scores, {Inserted} new, {Duplicates} duplicate, {Echoes} echo, {Rejected} rejected, {Written} tables written back",
+                report.ScoresFound, report.Inserted, report.Duplicates, report.Echoes, report.Rejected, report.TablesWritten);
         }
         catch (OperationCanceledException)
         {
